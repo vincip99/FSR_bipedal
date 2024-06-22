@@ -1,16 +1,19 @@
 clear; close all; clc
 
-
-
-q_start = [1; 1];
+%% map 
+q_start = [8; 8];
 q_goal = [20; 20];
-q_o = 2*[1, 1.1; 1, 1.2; 1, 1.3; 2.5, 2.5; 2.5, 2.6; 1.5, 1; 1.6,1]';
+
+obstacles = 4;
+
+for i = 1:obstacles
+    Cobstacle(i) = polyfit([10*rand() 10*rand()],[10*rand() 10*rand()]);
+end
+
 Ts = 0.01;
 k_a = 10; k_r = 10;
 
 q_next(:,1) = q_start;
-
-
 
 map2D = map(40, 40, 10);
 
@@ -24,7 +27,7 @@ map2D = map(40, 40, 10);
 
     i = 1;
 while norm(q_goal - q_next(:,i)) > 1
-    q_o = sensing(map2D,q_next(:,i),20);
+    q_o = sensing(map2D,ceil(q_next(:,i)),2);
     
     [q_next(:,i+1), f(:,i), U(:,i)] = artificialPotential(q_next(:,i), q_goal, q_o, Ts, k_a, k_r);
     scatter(q_next(1,i),q_next(2,i), 'r', 'filled')
