@@ -6,10 +6,6 @@ q_goal = [20; 20];
 
 obstacles = 4;
 
-for i = 1:obstacles
-    Cobstacle(i) = polyfit([10*rand() 10*rand()],[10*rand() 10*rand()]);
-end
-
 Ts = 0.01;
 k_a = 10; k_r = 10;
 

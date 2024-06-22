@@ -35,31 +35,42 @@ function [q_next, f_t, U_t] = artificialPotential(q, q_goal, q_o, Ts, k_a, k_r)
     U_t = U_a + U_r;
     f_t = f_a + f_r;
 
-    % local minima
-    % k_v = k_r/2;
-    % 
-    % if eta <= eta_o
-    %     U_vir = k_v/(q - b);
-    %     f_vir = k_v * (q - b)/eta;
-    % elseif eta > eta_o
-    %     U_vir = 0;
-    %     f_vir = 0;
-    % end
-    % 
-    % if f_t == 0 & U_t > 0
-    %     U_t = U_a + U_r + U_vir;
-    %     f_t = f_a + f_r - f_vir;
-    % else
-    %     %   Total contribution
-    %     U_t = U_a + U_r;
-    %     f_t = f_a + f_r;
-    % end
-
-    
-    %   updating current position
-    q_next = q + Ts * f_t;
+% local minima
+  if U_t > 0 && norm(f_t) == 0
+        % Perform random motion to escape local minima
+        q_next = random_motion(q, q_o, 10);
+    else
+        % Update current position
+        q_next = q + Ts * f_t;
+    end
 
 end
 
+function is_free = is_free_space(position, q_o)
+    % Check if the position is free from obstacles
+    is_free = true;
+    for i = 1:size(q_o, 2)
+        if norm(position - q_o(:, i)) == 0
+            is_free = false;
+            break;
+        end
+    end
+end
 
+function q_next = random_motion(q, q_o)
+    % Possible movement directions: left, right, up, down, diagonals
+    directions = [1, 0; -1, 0; 0, 1; 0, -1; 1, 1; -1, -1; 1, -1; -1, 1];
+    
+    amplifier=3;
+
+    while ~is_free(q_next, q_o)
+        % random direction for the movement
+        random_dir = directions(randi(size(directions, 1)), :);
+        
+        % Calculate the next position
+        q_next = q +amplifier*random_dir';%trasponse to make it a column vector
+
+    end
+    
+end
 
