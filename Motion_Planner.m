@@ -1,19 +1,21 @@
-function [path, f_t, U_t] = Motion_Planner(q_start, q_goal, map)
+function [path, f_t, U_t,X,Y,f_x,f_y] = Motion_Planner(q_start, q_goal, map)
 %MOTION_PLANNER Summary of this function goes here
 %   Detailed explanation goes here
-[path, f_t, U_t] = artificialPotential(q_start, q_goal, map);
+[path, f_t, U_t, X,Y,f_x,f_y] = artificialPotential(q_start, q_goal, map);
 end
 
-function [path, f_t, U_t] = artificialPotential(q_start, q_goal, map)
+function [path, f_t, U_t, X,Y,f_x,f_y] = artificialPotential(q_start, q_goal, map)
 
 i = 1;
 q_next(:,1) = q_start;
+U_t(:,1) = [0; 0];
+f_t(:,1) = [0; 0];
 % Iterate until near the goal or max_iteration 
 while norm(q_goal - q_next(:,i)) > 0.1 && i < 350
     grid_mapping(q_next(:,i))
     q_o = sense(q_next(:,i),map);
 
-    [q_next(:,i+1), f_t(:,i), U_t(:,i)] = artificialPotentialField(q_next(:,i), q_goal, q_o);
+    [q_next(:,i+1), f_t(:,i+1), U_t(i+1)] = artificialPotentialField(q_next(:,i), q_goal, q_o, 1);
 
     scatter(grid_mapping(q_o(1,:)),grid_mapping(q_o(2,:)), 'y', 'filled')
     scatter(grid_mapping(q_next(1,i)),grid_mapping(q_next(2,i)), 'r', 'filled')
@@ -27,9 +29,28 @@ end
 
 path = q_next;
 
+% Define the grid of points
+[X, Y] = meshgrid(1:size(map, 2), 1:size(map, 1));
+
+% Initialize arrays for forces and potential
+f_x = zeros(size(X));
+f_y = zeros(size(Y));
+U = zeros(size(X));
+
+
+for i = 1:size(X,1)
+    for j = 1:size(X,2)
+        [~, f, U] = artificialPotentialField(grid_inverse_mapping([X(i,j); Y(i,j)]), q_goal, q_o, 0);
+        f_x(i, j) = f(1);
+        f_y(i, j) = f(2);
+        U(i, j) = U;
+
+    end
 end
 
-function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o)
+end
+
+function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, flag)
 %ARTIFICIALPOTENTIAL Implements the artificial potential field method for trajectory planning.
 
     k_a = 10; % attrattive gain
@@ -60,7 +81,7 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o)
     b = q_o(:,idx);
 
  
-    eta_o = 2;
+    eta_o = 4;
     if eta <= eta_o
         U_r = k_r/gamma * (1/eta - 1/eta_o)^gamma;
         %f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
@@ -74,18 +95,21 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o)
     U_t = U_a + U_r;
     f_t = f_a + f_r;
     
-    % max velocity saturation
-    if f_t(1) > max_vel_x
-        f_t(1) = max_vel_x;
-    elseif f_t(1) < 0
-        f_t(1) = 0;
+    % Max velocity saturation if flag is set
+    if flag == 1
+        if f_t(1) > max_vel_x
+            f_t(1) = max_vel_x;
+        elseif f_t(1) < 0
+            f_t(1) = 0;
+        end
+        
+        if f_t(2) > max_vel_y
+            f_t(2) = max_vel_y;
+        elseif f_t(2) < -max_vel_y
+            f_t(2) = -max_vel_y;
+        end
     end
 
-    if f_t(2) > max_vel_y
-        f_t(2) = max_vel_y;
-    elseif f_t(2) < -max_vel_y
-        f_t(2) = -max_vel_y;
-    end
 
     % local minima
     % if U_t > 0 && norm(f_t) == 0 
