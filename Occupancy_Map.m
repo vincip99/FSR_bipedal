@@ -1,4 +1,4 @@
-function [x_grid, y_grid, z_heights, X, Y] = Occupancy_Map(row, col, type)
+function [x_grid, y_grid, z_heights, X, Y, map] = Occupancy_Map(row, col, type)
 %OCCUPANCY_MAP Generate an occupancy map with different terrain types
 %   [X, Y, z_heights] = Occupancy_Map(row, col, type) generates a 2D
 %   occupancy map of size 'row' by 'col' with the specified terrain 'type'.
@@ -88,14 +88,28 @@ function [x_grid, y_grid, z_heights, X, Y] = Occupancy_Map(row, col, type)
             obstacle_width = floor(length(y_grid)/15);
             obstacle_x1 = (length(x_grid) - obstacle_length)/2;
             obstacle_y1 = (length(y_grid) - obstacle_width)/2;
+            z_heights(obstacle_y1:obstacle_y1+obstacle_width,obstacle_x1:obstacle_x1+obstacle_length) = h;
+            z_heights = z_heights';
+        case 9
+            % random obstacle
+            z_heights = (zeros(size(X)));
+            h = 1;
+            obstacle_length = floor(length(x_grid)/15);
+            obstacle_width = floor(length(y_grid)/15);
+            obstacle_x1 = (length(x_grid) - obstacle_length)/2.5;
+            obstacle_y1 = (length(y_grid) - obstacle_width)/1.5;
             obstacle_x2 = (length(x_grid) - obstacle_length)/3;
             obstacle_y2 = (length(y_grid) - obstacle_width)/4;
             z_heights(obstacle_y1:obstacle_y1+obstacle_width,obstacle_x1:obstacle_x1+obstacle_length) = h;
-            %   z_heights(obstacle_y2:obstacle_y2+obstacle_width,obstacle_x2:obstacle_x2+obstacle_length) = h;
+            z_heights(obstacle_y2:obstacle_y2+obstacle_width,obstacle_x2:obstacle_x2+obstacle_length) = h;
             z_heights = z_heights';
         otherwise
-            error('Invalid terrain type. Choose 1 to 8.');
+            error('Invalid terrain type. Choose 1 to 9.');
     end
+
+    % Create a binary map from z_heights
+    % Rotate the z_heights matrix 90 degrees counter-clockwise
+    map = rot90(z_heights) > 0;
 
 end
 
