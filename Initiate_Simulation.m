@@ -49,29 +49,6 @@ p_foot_pre = zeros(6,N+10); % foot matrix initialization
 % Gait setup:
 gait = 1; % Standing = 0; walking = 1; 
 
-%% grid surface definition (if using uneven terrain)
-% make sure to switch to "Mesh Grid Surface" in Hector model
-row = 5; col = 1; type = 9;
-[x_grid, y_grid, z_heights, X, Y, map] = Occupancy_Map(row, col, type);
-
-% plotting the map
-figure
-surf(X,Y,z_heights')
-title(sprintf('Generated Terrain Type %d', type), 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
-zlabel('Height', 'FontSize', 12, 'FontWeight', 'bold');
-colormap(jet); % Set the colormap
-axis tight; % Remove extra whitespace
-
-% Improve the lighting
-% camlight left; % Add lighting from the left
-lighting phong; % Set lighting to phong for a more realistic look
-
-% Additional enhancements
-set(gca, 'FontSize', 12, 'FontWeight', 'bold'); % Set the font size and weight for the axes
-hold off
-
 %% contact cloud:
 % foot contact approximated by point clouds:
 npt = 5; % number of contact points per line
@@ -147,42 +124,28 @@ elbow_q0 = -90;
 elbow_min = -150;
 elbow_max = -10;
 
+%% grid surface definition (if using uneven terrain)
+% make sure to switch to "Mesh Grid Surface" in Hector model
+row = 5; col = 1; type = 11;
+
+% start and goal points
+q_start = [body_x0; body_y0; body_z0];
+q_goal = [4; 0; body_z0];
+
+[x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_start, q_goal);
+
+
 %% Binary MAP
-% data
-q_start = [body_x0; body_y0];
-q_goal = [3; 0];
 
-q_next(:,1) = q_start;
-
-% Plot the binary map with inverted colors
-figure
-imshow(map, 'InitialMagnification', 'fit');
-hold on
-scatter(grid_mapping(q_start(1)), grid_mapping(q_start(2)),'g','filled');
-scatter(grid_mapping(q_goal(1)), grid_mapping(q_goal(2)),'b','filled');
-colormap(flipud(gray)); % Invert the grayscale colormap
-title('Binary Map');
-xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
-hold on
-
-[path, f, U, X,Y,f_x,f_y] = Motion_Planner(q_start, q_goal, map);
-
-% Plot the vector field using quiver
-figure;
-quiver(X, Y, f_x, f_y);
-axis equal;
-xlabel('X');
-ylabel('Y');
-title('Artificial Potential Field Vector Field');
-grid on;
+[path, f, U, q_o, X,Y,f_x,f_y] = Motion_Planner(q_start(1:2), q_goal(1:2), map, 1);
+% path = Motion_Planner(q_start(1:2), q_goal(1:2), map);
 
 % Create a time vector, ensuring it is a column vector (100x1 in this case)
-time_vector = linspace(1, 5, size(f, 2))';
-f(2,:) = -f(2,:);
-
-% Create the timeseries object
-v = timeseries(f', time_vector);
+% time_vector = linspace(1, 5, size(f, 2))';
+% f(2,:) = -f(2,:);
+% 
+% % Create the timeseries object
+% v = timeseries(f', time_vector);
 
 %% Fncs
 function out = define_dt_MPC(vec) 
