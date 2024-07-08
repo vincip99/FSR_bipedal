@@ -1,11 +1,11 @@
-function [path, varargout] = Motion_Planner(q_start, q_goal, map, type)
+function path = Motion_Planner(q_start, q_goal, map, type)
 %MOTION_PLANNER Summary of this function goes here
 %   Detailed explanation goes here
 
 % Plot the binary map with inverted colors
 figure(2)
 clf;
-imshow(map, 'InitialMagnification', 'fit');
+imshow(map.grid, 'InitialMagnification', 'fit');
 colormap(flipud(gray)); % Invert the grayscale colormap
 title('Binary Map');
 xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
@@ -15,9 +15,10 @@ axis equal;
 set(gca, 'YDir', 'reverse'); % Reverse Y-axis for proper grid display
 
 % Mark the start and goal points
-q_start_grid = grid_mapping(q_start(1:2));
-scatter(q_start_grid(1), grid_mapping(q_start(2)), 100, 'g', 'filled', 'DisplayName', 'Start');
-scatter(grid_mapping(q_goal(1)), grid_mapping(q_goal(2)), 100, 'm', 'filled', 'DisplayName', 'Goal');
+q_start_grid = grid_mapping(q_start(1:2), map);
+q_goal_grid = grid_mapping(q_goal(1:2), map);
+scatter(q_start_grid(1), q_start_grid(2), 100, 'g', 'filled', 'DisplayName', 'Start');
+scatter(q_goal_grid(1), q_goal_grid(2), 100, 'm', 'filled', 'DisplayName', 'Goal');
 
 switch type
     case 1
@@ -25,32 +26,32 @@ switch type
     case 2
         path = rrt(q_start, q_goal, map);
     case 3
-        path = NNF(grid_mapping(q_start'), grid_mapping(q_goal'), map);
+        path = NNF(q_start_grid', q_goal_grid', map);
 end
 
 
     % Check if optional output is requested
-    if nargout > 4
-        varargout{1} = f;
-        varargout{2} = U;
-        varargout{3} = q_o;
-        varargout{4} = f_x;
-        varargout{5} = f_y;
-    elseif nargout > 3
-        varargout{1} = f;
-        varargout{2} = U;
-        varargout{3} = q_o;
-        varargout{4} = f_x;
-    elseif nargout > 2
-        varargout{1} = f;
-        varargout{2} = U;
-        varargout{3} = q_o;
-    elseif nargout > 1
-        varargout{1} = f;
-        varargout{2} = U;
-    elseif nargout > 0
-        varargout{1} = f;
-    end
+    % if nargout > 4
+    %     varargout{1} = f;
+    %     varargout{2} = U;
+    %     varargout{3} = q_o;
+    %     varargout{4} = f_x;
+    %     varargout{5} = f_y;
+    % elseif nargout > 3
+    %     varargout{1} = f;
+    %     varargout{2} = U;
+    %     varargout{3} = q_o;
+    %     varargout{4} = f_x;
+    % elseif nargout > 2
+    %     varargout{1} = f;
+    %     varargout{2} = U;
+    %     varargout{3} = q_o;
+    % elseif nargout > 2
+    %     varargout{1} = f;
+    %     varargout{2} = U;
+    % if nargout < 2
+    %     varargout{1} = f;
+    % end
 
 end
 
@@ -58,19 +59,23 @@ function [path, f_t, U_t, q_o, f_x,f_y] = artificialPotential(q_start, q_goal, m
 
 i = 1;
 q_next(:, 1) = q_start;
-U_t(:, 1) = [0; 0];
+U_t(:, 1) = 0;
 f_t(:, 1) = [0; 0];
 max_iterations = 350;
 q_o = [];
 
 % Iterate until near the goal or max_iteration 
 while norm(q_goal - q_next(:, i)) > 0.1 && i < max_iterations
-    grid_mapping(q_next(:,i))
-    q_o = [q_o, sense(q_next(:,i), map, 5)];
+    grid_mapping(q_next(:,i), map)
+    q_o = sense(q_next(:,i), map, 50);
 
     % Grid value of actual q and q_o
-    q_o_grid = grid_mapping(q_o);
-    q_grid = grid_mapping(q_next(:,i));
+    q_o_grid = [];
+    for j = 1:size(q_o,2)
+        q_o_grid(:,j) = grid_mapping(q_o(:,j), map);
+    end
+    
+    q_grid = grid_mapping(q_next(:,i), map);
 
     % Plot the detected obstacles
     scatter(q_o_grid(1,:), q_o_grid(2,:), 'y', 'filled');
@@ -80,17 +85,29 @@ while norm(q_goal - q_next(:, i)) > 0.1 && i < max_iterations
 
     [q_next(:,i+1), f_t(:,i+1), U_t(i+1)] = artificialPotentialField(q_next(:,i), q_goal, q_o, 1);
 
-    q_next_grid = grid_mapping(q_next(:,i+1));
+    q_next_grid = grid_mapping(q_next(:,i+1), map);
+
+        % Check for collision
+        collision_detected = false;
+        for j = 1:size(q_o_grid, 2)
+            if isequal(q_grid, q_o_grid(:, j))
+                collision_detected = true;
+                break;
+            end
+        end
+        
+        if collision_detected
+            disp('Collision detected. Stopping the algorithm.');
+            return;
+        end
 
     % Plot the robot's path
     plot([q_grid(1) q_next_grid(1)], [q_grid(2) q_next_grid(2)], 'r', 'LineWidth', 1.5, 'DisplayName', 'Path');
     
     % Plot lines from the robot to the detected obstacles
-    plot([q_grid(1) q_o_grid(1, :)], [q_grid(2) q_o_grid(2, :)], 'b');
+    % plot([q_grid(1) q_o_grid(1, :)], [q_grid(2) q_o_grid(2, :)], 'b');
 
-    scatter(q_grid(1), q_grid(2), 30, 'k', 'filled');
-
-    pause(0.05)
+    pause(0.005)
     i = i + 1;
 end
 
@@ -99,7 +116,7 @@ hold off;
 path = q_next;
 
 % Define the grid of points
-[X, Y] = meshgrid(1:size(map, 2), 1:size(map, 1));
+[X, Y] = meshgrid(1:size(map.grid, 2), 1:size(map.grid, 1));
 
 % Initialize arrays for forces and potential
 f_x = zeros(size(X));
@@ -109,15 +126,15 @@ U = zeros(size(X));
 q_o_max = sense(q_next(:,i), map, 100);
 for i = 1:size(X, 1)
     for j = 1:size(X, 2)
-        [~, f, U_val] = artificialPotentialField(grid_inverse_mapping([X(i, j); Y(i, j)]), q_goal, q_o_max, 0);
+        [~, f, U_val] = artificialPotentialField(grid_inverse_mapping([X(i, j); Y(i, j)], map), q_goal, q_o_max, 0);
         f_x(i, j) = f(1);
         f_y(i, j) = f(2);
         U(i, j) = U_val;
     end
 end
 
-% f_x = flip(f_x);
-% f_y = flip(f_y);
+f_x = flip(f_x);
+f_y = flip(f_y);
 
 magnitude = sqrt(f_x.^2 + f_y.^2);
 f_x_norm = f_x ./ magnitude;
@@ -186,8 +203,6 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, flag)
 
     U_t = U_a + U_r;
     f_t = f_a + f_r;
-
-    yaw = atan2(f_t(2),f_t(1))
     
     % Max velocity saturation if flag is set
     if flag == 1
@@ -254,7 +269,7 @@ function obstacle = sense(q, map, r_grid)
 % r = 1;
 
 % Convert from the meter world to the grid world
-q_grid = grid_mapping(q);
+q_grid = grid_mapping(q, map);
 % r_grid = grid_mapping(r);
 
 % r_grid = 5;
@@ -273,16 +288,16 @@ for i = q_grid(2)-r_grid:q_grid(2)+r_grid
         % Check if the point is within the circle
         %if (i - q_grid(1))^2 + (j - q_grid(2))^2 <= r_grid^2
             % into the map
-            if i > 1 && i < size(map, 1) && j > 1 && j < size(map, 2)
-                if map(i, j) == 1
+            if i > 1 && i < size(map.grid, 1) && j > 1 && j < size(map.grid, 2)
+                if map.grid(i, j) ~= 0
                     % Save each obstacle seen by the sensor
-                    obstacle(:, index) = grid_inverse_mapping([j; i]);
+                    obstacle(:, index) = grid_inverse_mapping([j; i], map);
                     index = index + 1;
                 end
             % boundary of the map as obstacles
-            elseif ((i == 1 || i == size(map, 1)) && (j >= 1 && j <= size(map, 2))) ...
-                        || ((j == 1 || j == size(map, 2)) && (i >= 1 && i < size(map, 1)))
-                    obstacle(:, index) = grid_inverse_mapping([j; i]);
+            elseif ((i == 1 || i == size(map.grid, 1)) && (j >= 1 && j <= size(map.grid, 2))) ...
+                        || ((j == 1 || j == size(map.grid, 2)) && (i >= 1 && i < size(map.grid, 1)))
+                    obstacle(:, index) = grid_inverse_mapping([j; i], map);
                     index = index + 1;
             end
         %end
@@ -290,23 +305,23 @@ for i = q_grid(2)-r_grid:q_grid(2)+r_grid
 end
 
 % Remove the unused columns
-obstacle(:,index:end) = [];
+obstacle(:,index+1:end) = [];
 
 end
 
-function q_index = grid_mapping(q)
+function q_index = grid_mapping(q, map)
 %GRID_MAPPING Summary of this function goes here
 %   Detailed explanation goes here
-q_index = [(10*round(q(1),1)+11); (-10*round(q(2),1)+11)];
+q_index = [round((q(1) + 1)/map.step + 1, 0); round((-q(2) + 1)/map.step + 1, 0)];
 end
 
-function q_meter = grid_inverse_mapping(q)
+function q_meter = grid_inverse_mapping(q, map)
 %GRID_INVERSE_MAPPING Summary of this function goes here
 %   Detailed explanation goes here
-q_meter = [(q(1) - 11)/10; (-q(2) + 11)/10];
+q_meter = [map.step*(q(1) - 1) - 1; -map.step*(q(2) - 1) + 1];
 end
 
-
+%% RRT
 function [tree, v] = rrt(q_start, q_goal, map)
     
 q_start = grid_mapping(q_start);
@@ -446,11 +461,17 @@ function plotEnviroment(tree, qi, qf, dq)
             'LineStyle', '--');
 end
 
+
 % Numerical navigation function
 function path = NNF(qs, qg, map)
 
 % generate the first map
-map1 = breadth4explorer(map,qg);
+filledMap = breadth4explorer(map.grid, qg);
+figure
+imshow(filledMap, 'InitialMagnification', 'fit');
+colormap(flipud(gray)); % Invert the grayscale colormap
+title('Binary Map');
+
 
 % figure
 % plotting map
@@ -462,8 +483,19 @@ map1 = breadth4explorer(map,qg);
 % title('4 adjacent cell map')
 
 % Path finding and cost 
-path1 = depthFirstHeuristic(map1, qs, qg)
-[hop1, cost1] = hopCounter(map1, path1)
+path1 = depthFirstHeuristic(filledMap, qs, qg);
+[hop1, cost1] = hopCounter(filledMap, path1)
+
+% Plot the start and goal positions
+plot(qs(1), qs(2), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g'); % Start point
+plot(qg(1), qg(2), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r'); % Goal point
+
+% Plot the path
+pathX = path1(1,:);
+pathY = path1(2,:);
+plot(pathX, pathY, 'b-', 'LineWidth', 2); % Path
+% 
+% plot(path1(1,:), path1(2,:))
 
 % % Plot the first path
 % figure
@@ -486,7 +518,7 @@ path1 = depthFirstHeuristic(map1, qs, qg)
 %         'FaceColor', 'y', 'EdgeColor', 'none');
 % end
 % hold off
-scatter(path1(1,:), path1(2,:))
+%scatter(path1(1,:), path1(2,:))
 
 path = path1;
 
@@ -494,55 +526,58 @@ end
 
 % floading algorithm with 4 adjacent cells
 function [map, path] = breadth4explorer(emptyMap, qg)
-    
-    % Init the queue and the visited vector
+    % Init the queue and the visited matrix
     x = qg(1); 
     y = qg(2);
     queue = [x; y];
-    visited = [];
+    visited = zeros(size(emptyMap));
+    visited(y, x) = 1;
     
-    % iteration until the queue has no more unexplored points
-    while size(queue,2) > 0 
-        % queue pop
+    % Iteration until the queue has no more unexplored points
+    while ~isempty(queue)
+        % Queue pop
         x = queue(1, 1);
         y = queue(2, 1);
-        queue(:,1) = [];
-        % marking the point as visited
-        visited = [visited, [x; y]];
-        % searching the four adjacent cells
+        queue(:, 1) = [];
+        
+        % Searching the four adjacent cells
         list = fourNeighbors(emptyMap, x, y);
-        % for every cell in list modify the respective value in the map
-        for i = 1 : size(list,2)
-            % if the cell was not yet visited
-            if (~ismember(visited(1,:),list(1,i))) | (~ismember(visited(2,:),list(2,i)))
-                % floading the 4 adjacent cells 
-                emptyMap(list(1,i),list(2,i)) = emptyMap(y, x) + 1; 
-                visited = [visited, [list(1,i); list(2,i)]]; % adding the cells to visited
-                queue = [queue; [list(1,i); list(2,i)]]; % update the queue
+        
+        % For every cell in the list, modify the respective value in the map
+        for i = 1:size(list, 2)
+            nx = list(1, i);
+            ny = list(2, i);
+            % If the cell was not yet visited
+            if visited(ny, nx) == 0
+                % Flooding the 4 adjacent cells
+                emptyMap(ny, nx) = emptyMap(y, x) + 1;
+                visited(ny, nx) = 1; % Marking the cell as visited
+                queue = [queue, [nx; ny]]; % Update the queue
             end
         end
     end
-    map = emptyMap; 
-    path = visited;
+    
+    map = emptyMap;
+    path = find(visited); % This will return linear indices of visited cells
 end
 
 function list = fourNeighbors(map, x, y)
 
     list = [];
     % position of south cell
-    if y + 1 <= size(map,1) && map(y + 1, x) ~= 1
+    if y + 1 <= size(map,1) && map(y + 1, x) == 0
         list = [list, [x; y + 1]];
     end
     % position of north cell
-    if y - 1 >= 1 && map(y - 1, x) ~= 1
+    if y - 1 >= 1 && map(y - 1, x) == 0
         list = [list, [x; y - 1]];
     end
     % position of east cell
-    if x + 1 <= size(map,2) && map(y, x + 1) ~= 1
+    if x + 1 <= size(map,2) && map(y, x + 1) == 0
         list = [list, [x + 1; y]];
     end
     % position of west cell
-    if x - 1 >= 1 && map(y, x - 1) ~= 1
+    if x - 1 >= 1 && map(y, x - 1) == 0
         list = [list, [x - 1; y]];
     end
 
@@ -555,25 +590,24 @@ function [path, stack, heuristic] = depthFirstHeuristic(map, qs, qg)
     y = qs(2);
     stack = [x; y];
     visited = [];
+
+    j = 1;
     
     %until we reach the goal
     while (x ~= qg(1) || y ~= qg(2))
         % pop
+        j
         x = stack(1,end);
         y = stack(2,end);
         stack(:,end) = [];
         % marking the point as visited
         visited = [visited, [x; y]];
-
-        % searching the 8 adjacent cells with
-        list = neighbors(map, x, y, 1);
-        % using the heuristic to sort the stack in order to pick first the
-        % desend order list
-        heuristic = heuristicSorting(map, list);
+        % searching the 8 adjacent cells with min value
+        minIndex = minNeighbors(map, x, y);
         % for each valid cell update the stack
-        for i = 1 : size(list,2)
-            if (~ismember(visited(1,:),heuristic(1,i))) | (~ismember(visited(2,:),heuristic(2,i)))
-                stack = [stack, [heuristic(1,i); heuristic(2,i)]];
+        for i = 1 : size(minIndex,1)
+            if (~ismember(visited(1,:),minIndex(1,i))) | (~ismember(visited(2,:),minIndex(2,i)))
+               stack = [stack, [minIndex(i,1); minIndex(i,2)]]
             end
         end
     end
@@ -581,50 +615,47 @@ function [path, stack, heuristic] = depthFirstHeuristic(map, qs, qg)
 end
 
 % adjacent cell list function
-function list = neighbors(map, x, y, wallValue)
+function list = minNeighbors(map, x, y)
 
         list = [];
+        value = [];
         % adding neighbors row and column value only if they are not wall
         % or out of the map
-        if y + 1 <= size(map,1) && map(y + 1, x) ~= wallValue
+        if y + 1 <= size(map,1) && map(y + 1, x) == 0
             list = [list, [y + 1; x]];
+            value = [value; map(y + 1, x)];
         end
-        if y - 1 >= 1 && map(y - 1, x) ~= wallValue
+        if y - 1 >= 1 && map(y - 1, x) == 0
             list = [list, [y - 1; x]];
+            value = [value; map(y - 1, x)];
         end
-        if x + 1 <= size(map,2) && map(y, x + 1) ~= wallValue
+        if x + 1 <= size(map,2) && map(y, x + 1) == 0
             list = [list, [y; x + 1]];
+            value = [value; map(y, x + 1)];
         end
-        if x - 1 >= 1 && map(y, x - 1) ~= wallValue
+        if x - 1 >= 1 && map(y, x - 1) == 0
             list = [list, [y; x - 1]];
+            value = [value; map(y, x - 1)];
         end
-        if y - 1 >= 1 && x - 1 >= 1 && map(y - 1, x - 1) ~= wallValue
-            list = [list, [y - 1; y - 1]];
+        if y - 1 >= 1 && x - 1 >= 1 && map(y - 1, x - 1) == 0
+            list = [list, [y - 1; x - 1]];
+            value = [value; map(y - 1, x + 1)];
         end
-        if y - 1 >= 1 && x + 1 <= size(map,2) && map(y - 1, x + 1) ~= wallValue
+        if y - 1 >= 1 && x + 1 <= size(map,2) && map(y - 1, x + 1) == 0
             list = [list, [y - 1; x + 1]];
+            value = [value; map(y - 1, x + 1)];
         end
-        if y + 1 <= size(map,1) && x - 1 >= 1 && map(y + 1, x - 1) ~= wallValue
+        if y + 1 <= size(map,1) && x - 1 >= 1 && map(y + 1, x - 1) == 0 
             list = [list, [y + 1; x - 1]];
+            value = [value; map(y + 1, x - 1)];
         end
-        if y + 1 <= size(map,1) && x + 1 <= size(map,2) && map(y + 1, x + 1) ~= wallValue
+        if y + 1 <= size(map,1) && x + 1 <= size(map,2) && map(y + 1, x + 1) == 0
             list = [list, [y + 1; x + 1]];
+            value = [value; map(y + 1, x + 1)];
         end
-end
-
-% heuristic stack sort
-function heuristic = heuristicSorting(map, list)
-    
-    valueList = zeros(size(list,2));
-    heuristic = zeros(size(list,1));
-    for i = 1 :size(list,2)
-        valueList(i) = map(list(1,i), list(2,i));
-    end
-    [~, index] = sort(valueList, 'descend');
-    for i = 1 :size(list,2)
-        heuristic(:,i) = [list(1,index(i)); list(2,index(i))];
-    end
-
+        % Pick the min value 
+        [~, index] = min(value);
+        minIndex = list(index,:);
 end
 
 function [hop, cost] = hopCounter(map, path)

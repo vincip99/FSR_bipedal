@@ -7,8 +7,10 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
 %          3 - Random terrain
 
     % Define the grid
-    x_grid = -1:0.1:row;
-    y_grid = -1:0.1:col;
+    step = 0.1;
+    bias = -1;
+    x_grid = bias:step:row;
+    y_grid = bias:step:col;
 
     % Generate the mesh grid
     [X, Y] = meshgrid(x_grid, y_grid);
@@ -115,7 +117,7 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             h = 1;
             
             % Define the thickness of the walls
-            wall_thickness = 2;
+            wall_thickness = floor(length(y_grid)/10);
             
             % Outer walls
             z_heights(1:wall_thickness, :) = h; % Top wall
@@ -127,24 +129,24 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             obstacle_width = floor(length(y_grid)/5);
             
             % Define interior walls 
-            interior_wall_1_x = 20:25;
-            interior_wall_1_y = 12:12 + wall_thickness - 1;
+            interior_wall_1_x = floor(length(x_grid)/3):floor(length(x_grid)/3 + length(x_grid)/12);
+            interior_wall_1_y = floor(length(y_grid)/2):floor(length(y_grid)/2) + wall_thickness - 1;
 
-            interior_wall_2_x = 20:20 + wall_thickness - 1;
-            interior_wall_2_y = 12:20;
+            interior_wall_2_x = floor(length(x_grid)/3):floor(length(x_grid)/3) + wall_thickness - 1;
+            interior_wall_2_y = floor(length(y_grid)/2):floor(length(y_grid));
 
-            interior_wall_3_x = 20:20 + wall_thickness - 1;
-            interior_wall_3_y = 1:5;
+            interior_wall_3_x = floor(length(x_grid)/3):floor(length(x_grid)/3) + wall_thickness - 1;
+            interior_wall_3_y = 1:floor(length(y_grid)/4);
     
-            interior_wall_4_x = 35:35 + wall_thickness - 1;
-            interior_wall_4_y = 1:12;
+            interior_wall_4_x = floor(length(x_grid)/1.5):floor(length(x_grid)/1.5) + wall_thickness - 1;
+            interior_wall_4_y = 1:floor(length(y_grid)/2);
 
             % Put an obstacle
-            obstacle_x1 = 40:40 + obstacle_length - 1;
-            obstacle_y1 = 5:5 + obstacle_width - 1;
+            obstacle_x1 = floor(length(x_grid)/1.35):floor(length(x_grid)/1.35) + obstacle_length - 1;
+            obstacle_y1 = floor(length(y_grid)/4):floor(length(y_grid)/4) + obstacle_width - 1;
 
-            obstacle_x2 = 50:50 + obstacle_length - 1;
-            obstacle_y2 = 15:15 + obstacle_width - 1;
+            obstacle_x2 = floor(length(x_grid)/1.25):floor(length(x_grid)/1.25) + obstacle_length - 1;
+            obstacle_y2 = floor(3*length(y_grid)/4.2):floor(3*length(y_grid)/4.2) + obstacle_width - 1;
 
             % Add interior walls to the grid
             z_heights(interior_wall_1_y, interior_wall_1_x) = h;
@@ -213,7 +215,11 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
 
     % Create a binary map from z_heights
     % Rotate the z_heights matrix 90 degrees counter-clockwise
-    map = rot90(z_heights) > 0;
+    grid = rot90(z_heights) > 0;
+
+    % Define a map struct
+    map = struct('grid', grid, 'row', row, 'column', col, 'step', step,...
+        'bias', bias);
 
     % Plot 3D map
     plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
