@@ -216,6 +216,7 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
     % Create a binary map from z_heights
     % Rotate the z_heights matrix 90 degrees counter-clockwise
     grid = rot90(z_heights) > 0;
+    grid = double(grid);
 
     % Define a map struct
     map = struct('grid', grid, 'row', row, 'column', col, 'step', step,...

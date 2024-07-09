@@ -138,7 +138,7 @@ q_goal = [4; 0; body_z0];
 %% Binary MAP
 
 %[path, f, U, q_o, X,Y,f_x,f_y] = Motion_Planner(q_start(1:2), q_goal(1:2), map, 3);
-path = Motion_Planner(q_start(1:2), q_goal(1:2), map, 3);
+[path, filledMap] = Motion_Planner(q_start(1:2), q_goal(1:2), map, 3);
 
 %scatter(path(1,:), path(2,:))
 

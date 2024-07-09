@@ -1,4 +1,4 @@
-function path = Motion_Planner(q_start, q_goal, map, type)
+function [path,filledMap] = Motion_Planner(q_start, q_goal, map, type)
 %MOTION_PLANNER Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -26,7 +26,7 @@ switch type
     case 2
         path = rrt(q_start, q_goal, map);
     case 3
-        path = NNF(q_start_grid', q_goal_grid', map);
+        [path, filledMap] = NNF(q_start_grid, q_goal_grid, map);
 end
 
 
@@ -463,19 +463,22 @@ end
 
 
 % Numerical navigation function
-function path = NNF(qs, qg, map)
+function [path, filledMap] = NNF(qs, qg, map)
 
 % generate the first map
+map.grid(map.grid ~= 0) = -1;
+
 filledMap = breadth4explorer(map.grid, qg);
 figure
 imshow(filledMap, 'InitialMagnification', 'fit');
-colormap(flipud(gray)); % Invert the grayscale colormap
+colormap(gray); % Invert the grayscale colormap
+caxis([min(filledMap(:)), max(filledMap(:))]);
 title('Binary Map');
+hold on
 
-
+% % plotting map
 % figure
-% plotting map
-% imagesc(map1);
+% imagesc(filledMap);
 % colormap(gray);
 % im.AlphaData = 0.5;
 % grid on;
@@ -490,12 +493,13 @@ path1 = depthFirstHeuristic(filledMap, qs, qg);
 plot(qs(1), qs(2), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g'); % Start point
 plot(qg(1), qg(2), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r'); % Goal point
 
+
 % Plot the path
 pathX = path1(1,:);
 pathY = path1(2,:);
 plot(pathX, pathY, 'b-', 'LineWidth', 2); % Path
-% 
-% plot(path1(1,:), path1(2,:))
+
+scatter(path1(1,:), path1(2,:))
 
 % % Plot the first path
 % figure
@@ -514,7 +518,7 @@ plot(pathX, pathY, 'b-', 'LineWidth', 2); % Path
 % title('Path Finding Algorithm depthFirstHeuristic')
 % for i = 2:size(path1, 2)-1
 %     pause(0.2);
-%     rectangle('Position', [path1(2, i)-0.5, path1(1, i)-0.5, 1, 1], ...
+%     rectangle('Position', [path1(1, i)-0.5, path1(2, i)-0.5, 1, 1], ...
 %         'FaceColor', 'y', 'EdgeColor', 'none');
 % end
 % hold off
@@ -586,76 +590,84 @@ end
 % path finding algorithm with heuristic stack sort
 function [path, stack, heuristic] = depthFirstHeuristic(map, qs, qg)
     % Init the stack and the visited vector
-    x = qs(1); 
+    x = qs(1);
     y = qs(2);
     stack = [x; y];
     visited = [];
-
-    j = 1;
     
     %until we reach the goal
-    while (x ~= qg(1) || y ~= qg(2))
+    while (x ~= qg(1) || y ~= qg(2)) && ~isempty(stack)
         % pop
-        j
-        x = stack(1,end);
-        y = stack(2,end);
+        x = stack(1,end)
+        y = stack(2,end)
         stack(:,end) = [];
         % marking the point as visited
         visited = [visited, [x; y]];
         % searching the 8 adjacent cells with min value
-        minIndex = minNeighbors(map, x, y);
+        [minValue, list] = minNeighbors(map, x, y);
+        heuristic = heuristicSorting(map, list);
         % for each valid cell update the stack
-        for i = 1 : size(minIndex,1)
-            if (~ismember(visited(1,:),minIndex(1,i))) | (~ismember(visited(2,:),minIndex(2,i)))
-               stack = [stack, [minIndex(i,1); minIndex(i,2)]]
+        for i = 1 : size(list,2)
+            if (~ismember(visited(1,:),minValue(1))) | (~ismember(visited(2,:),minValue(2)))
+               stack = [stack, minValue];
             end
         end
     end
     path = visited;
 end
 
-% adjacent cell list function
-function list = minNeighbors(map, x, y)
+% Heuristic stack sort
+function heuristic = heuristicSorting(map, list)
+    valueList = zeros(1, size(list, 2));
+    for i = 1:size(list, 2)
+        valueList(i) = map(list(2, i), list(1, i));
+    end
+    [~, index] = sort(valueList);
+    heuristic = list(:, index);
+end
 
-        list = [];
-        value = [];
-        % adding neighbors row and column value only if they are not wall
-        % or out of the map
-        if y + 1 <= size(map,1) && map(y + 1, x) == 0
-            list = [list, [y + 1; x]];
-            value = [value; map(y + 1, x)];
-        end
-        if y - 1 >= 1 && map(y - 1, x) == 0
-            list = [list, [y - 1; x]];
-            value = [value; map(y - 1, x)];
-        end
-        if x + 1 <= size(map,2) && map(y, x + 1) == 0
-            list = [list, [y; x + 1]];
-            value = [value; map(y, x + 1)];
-        end
-        if x - 1 >= 1 && map(y, x - 1) == 0
-            list = [list, [y; x - 1]];
-            value = [value; map(y, x - 1)];
-        end
-        if y - 1 >= 1 && x - 1 >= 1 && map(y - 1, x - 1) == 0
-            list = [list, [y - 1; x - 1]];
-            value = [value; map(y - 1, x + 1)];
-        end
-        if y - 1 >= 1 && x + 1 <= size(map,2) && map(y - 1, x + 1) == 0
-            list = [list, [y - 1; x + 1]];
-            value = [value; map(y - 1, x + 1)];
-        end
-        if y + 1 <= size(map,1) && x - 1 >= 1 && map(y + 1, x - 1) == 0 
-            list = [list, [y + 1; x - 1]];
-            value = [value; map(y + 1, x - 1)];
-        end
-        if y + 1 <= size(map,1) && x + 1 <= size(map,2) && map(y + 1, x + 1) == 0
-            list = [list, [y + 1; x + 1]];
-            value = [value; map(y + 1, x + 1)];
-        end
-        % Pick the min value 
-        [~, index] = min(value);
-        minIndex = list(index,:);
+% Adjacent cell list function
+function [minValue, list] = minNeighbors(map, x, y)
+    list = [];
+    value = [];
+    
+    % Adding neighbors row and column value only if they are not wall or out of the map
+    if y + 1 <= size(map, 1) && map(y + 1, x) ~= -1
+        list = [list, [x; y + 1]];
+        value = [value, map(y + 1, x)];
+    end
+    if y - 1 >= 1 && map(y - 1, x) ~= -1
+        list = [list, [x; y - 1]];
+        value = [value, map(y - 1, x)];
+    end
+    if x + 1 <= size(map, 2) && map(y, x + 1) ~= -1
+        list = [list, [x + 1; y]];
+        value = [value, map(y, x + 1)];
+    end
+    if x - 1 >= 1 && map(y, x - 1) ~= -1
+        list = [list, [x - 1; y]];
+        value = [value, map(y, x - 1)];
+    end
+    if y - 1 >= 1 && x - 1 >= 1 && map(y - 1, x - 1) ~= -1
+        list = [list, [x - 1; y - 1]];
+        value = [value, map(y - 1, x - 1)];
+    end
+    if y - 1 >= 1 && x + 1 <= size(map, 2) && map(y - 1, x + 1) ~= -1
+        list = [list, [x + 1; y - 1]];
+        value = [value, map(y - 1, x + 1)];
+    end
+    if y + 1 <= size(map, 1) && x - 1 >= 1 && map(y + 1, x - 1) ~= -1
+        list = [list, [x - 1; y + 1]];
+        value = [value, map(y + 1, x - 1)];
+    end
+    if y + 1 <= size(map, 1) && x + 1 <= size(map, 2) && map(y + 1, x + 1) ~= -1
+        list = [list, [x + 1; y + 1]];
+        value = [value, map(y + 1, x + 1)];
+    end
+    
+    % Pick the min value 
+    [~, index] = min(value);
+    minValue = list(:, index);
 end
 
 function [hop, cost] = hopCounter(map, path)
@@ -665,7 +677,7 @@ function [hop, cost] = hopCounter(map, path)
     % Total cost of the path
     cost = 0;
     for i = 1 : size(path,2)
-        cost = cost + map(path(1,i), path(2,i));
+        cost = cost + map(path(2,i), path(1,i));
     end
 end
 
