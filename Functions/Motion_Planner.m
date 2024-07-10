@@ -1,9 +1,21 @@
-function [path,filledMap] = Motion_Planner(q_start, q_goal, map, type)
-%MOTION_PLANNER Summary of this function goes here
-%   Detailed explanation goes here
+function [path, varargout] = Motion_Planner(q_start, q_goal, map, type)
+    % MOTION_PLANNER Plans a path from start to goal position using the specified method.
+    %
+    % Inputs:
+    %   q_start - Starting configuration (e.g., [x, y, theta])
+    %   q_goal - Goal configuration (e.g., [x, y, theta])
+    %   map - Structure containing the map grid and configuration space grid
+    %   type - Integer indicating the planning algorithm to use
+    %          1: Artificial Potential Fields (APF)
+    %          2: Rapidly-exploring Random Trees (RRT)
+    %          3: Numerical Navigation Function (NNF)
+    %
+    % Outputs:
+    %   path - Planned path from start to goal
+    %   varargout - Optional additional outputs depending on the chosen algorithm
 
 % Plot the binary map with inverted colors
-figure(2)
+figure;
 clf;
 imshow(map.grid, 'InitialMagnification', 'fit');
 colormap(flipud(gray)); % Invert the grayscale colormap
@@ -20,54 +32,51 @@ q_goal_grid = grid_mapping(q_goal(1:2), map);
 scatter(q_start_grid(1), q_start_grid(2), 100, 'g', 'filled', 'DisplayName', 'Start');
 scatter(q_goal_grid(1), q_goal_grid(2), 100, 'm', 'filled', 'DisplayName', 'Goal');
 
+% Plot the binary map with inverted colors
+figure;
+clf;
+imshow(map.cgrid, 'InitialMagnification', 'fit');
+colormap(flipud(gray)); % Invert the grayscale colormap
+title('Binary Configuration Space Map');
+xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
+ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
+hold on;
+axis equal;
+set(gca, 'YDir', 'reverse'); % Reverse Y-axis for proper grid display
+
+% Mark the start and goal points
+q_start_grid = grid_mapping(q_start(1:2), map);
+q_goal_grid = grid_mapping(q_goal(1:2), map);
+scatter(q_start_grid(1), q_start_grid(2), 100, 'g', 'filled', 'DisplayName', 'Start');
+scatter(q_goal_grid(1), q_goal_grid(2), 100, 'm', 'filled', 'DisplayName', 'Goal');
+
 switch type
     case 1
-        [path, f, U, q_o, f_x, f_y] = artificialPotential(q_start, q_goal, map);
+        [path, f, U, q_o, f_x, f_y] = artificialPotential(q_start, q_goal, map, 1);
+        varargout = {f, U, q_o, f_x, f_y};
     case 2
         path = rrt(q_start, q_goal, map);
+        varargout = {};
     case 3
-        [path, filledMap] = NNF(q_start_grid, q_goal_grid, map);
+        [path, v, filledMap] = NNF(q_start_grid, q_goal_grid, map);
+        varargout = {v, filledMap};
 end
-
-
-    % Check if optional output is requested
-    % if nargout > 4
-    %     varargout{1} = f;
-    %     varargout{2} = U;
-    %     varargout{3} = q_o;
-    %     varargout{4} = f_x;
-    %     varargout{5} = f_y;
-    % elseif nargout > 3
-    %     varargout{1} = f;
-    %     varargout{2} = U;
-    %     varargout{3} = q_o;
-    %     varargout{4} = f_x;
-    % elseif nargout > 2
-    %     varargout{1} = f;
-    %     varargout{2} = U;
-    %     varargout{3} = q_o;
-    % elseif nargout > 2
-    %     varargout{1} = f;
-    %     varargout{2} = U;
-    % if nargout < 2
-    %     varargout{1} = f;
-    % end
 
 end
 
-function [path, f_t, U_t, q_o, f_x,f_y] = artificialPotential(q_start, q_goal, map)
+function [path, f_t, U_t, q_o, f_x,f_y] = artificialPotential(q_start, q_goal, map, type)
 
 i = 1;
 q_next(:, 1) = q_start;
 U_t(:, 1) = 0;
 f_t(:, 1) = [0; 0];
-max_iterations = 350;
+max_iterations = 200;
 q_o = [];
 
 % Iterate until near the goal or max_iteration 
 while norm(q_goal - q_next(:, i)) > 0.1 && i < max_iterations
     grid_mapping(q_next(:,i), map)
-    q_o = sense(q_next(:,i), map, 50);
+    q_o = sense(q_next(:,i), map, 10);
 
     % Grid value of actual q and q_o
     q_o_grid = [];
@@ -83,9 +92,9 @@ while norm(q_goal - q_next(:, i)) > 0.1 && i < max_iterations
     % Plot the robot's current position
     scatter(q_grid(1), q_grid(2), 'r', 'filled');
 
-    [q_next(:,i+1), f_t(:,i+1), U_t(i+1)] = artificialPotentialField(q_next(:,i), q_goal, q_o, 1);
+    [q_next(:,i+1), f_t(:,i+1), U_t(i+1)] = artificialPotentialField(q_next(:,i), q_goal, q_o, type);
 
-    q_next_grid = grid_mapping(q_next(:,i+1), map);
+    q_next_grid = grid_mapping(q_next(:,i+1), map)
 
         % Check for collision
         collision_detected = false;
@@ -123,10 +132,10 @@ f_x = zeros(size(X));
 f_y = zeros(size(Y));
 U = zeros(size(X));
 
-q_o_max = sense(q_next(:,i), map, 100);
+q_o_max = sense(q_next(:,i), map, 10000);
 for i = 1:size(X, 1)
     for j = 1:size(X, 2)
-        [~, f, U_val] = artificialPotentialField(grid_inverse_mapping([X(i, j); Y(i, j)], map), q_goal, q_o_max, 0);
+        [~, f, U_val] = artificialPotentialField(grid_inverse_mapping([X(i, j); Y(i, j)], map), q_goal, q_o_max, 1);
         f_x(i, j) = f(1);
         f_y(i, j) = f(2);
         U(i, j) = U_val;
@@ -137,6 +146,7 @@ f_x = flip(f_x);
 f_y = flip(f_y);
 
 magnitude = sqrt(f_x.^2 + f_y.^2);
+magnitude = 1;
 f_x_norm = f_x ./ magnitude;
 f_y_norm = f_y ./ magnitude;
 
@@ -159,11 +169,11 @@ colorbar; % Add a colorbar to show potential values
 
 end
 
-function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, flag)
+function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
 %ARTIFICIALPOTENTIAL Implements the artificial potential field method for trajectory planning.
 
     k_a = 10; % attrattive gain
-    k_r = 1;    % repulsive gain
+    k_r = 20;    % repulsive gain
     gamma = 2;  % repulsive factor
     Ts = 0.01; % samlpe time
 
@@ -190,22 +200,26 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, flag)
     b = q_o(:,idx);
 
  
+    f_r = [0; 0];
     eta_o = 1;
     if eta <= eta_o
         U_r = k_r/gamma * (1/eta - 1/eta_o)^gamma;
-        % f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
-        f_r(1,1) = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(2) - b(2))/eta;
-        f_r(2,1) = -k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(1) - b(1))/eta;
+        if type == 1
+            f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
+        elseif type == 2
+            f_r(1,1) = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(2) - b(2))/eta;
+            f_r(2,1) = -k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(1) - b(1))/eta;
+        end
     else
         U_r = 0;
         f_r = [0; 0];
     end
 
     U_t = U_a + U_r;
-    f_t = f_a + f_r;
+    f_t = f_a + f_r
     
     % Max velocity saturation if flag is set
-    if flag == 1
+    % if flag == 1
         if f_t(1) > max_vel_x
             f_t(1) = max_vel_x;
         elseif f_t(1) < 0
@@ -217,7 +231,7 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, flag)
         elseif f_t(2) < -max_vel_y
             f_t(2) = -max_vel_y;
         end
-    end
+    % end
 
 
     % local minima
@@ -233,6 +247,22 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, flag)
         q_next = q + Ts * f_t; 
     %end
 
+end
+
+function v = saturation(v, max_vel_x, max_vel_y)
+
+    % Max velocity saturation if flag is set
+    if v(1) > max_vel_x
+        v(1) = max_vel_x;
+    elseif v(1) < 0
+        v(1) = 0;
+    end
+    
+    if v(2) > max_vel_y
+        v(2) = max_vel_y;
+    elseif v(2) < -max_vel_y
+        v(2) = -max_vel_y;
+    end
 end
 
 function q_next = random_motion(q, q_o)
@@ -288,15 +318,15 @@ for i = q_grid(2)-r_grid:q_grid(2)+r_grid
         % Check if the point is within the circle
         %if (i - q_grid(1))^2 + (j - q_grid(2))^2 <= r_grid^2
             % into the map
-            if i > 1 && i < size(map.grid, 1) && j > 1 && j < size(map.grid, 2)
-                if map.grid(i, j) ~= 0
+            if i > 1 && i < size(map.cgrid, 1) && j > 1 && j < size(map.cgrid, 2)
+                if map.cgrid(i, j) ~= 0
                     % Save each obstacle seen by the sensor
                     obstacle(:, index) = grid_inverse_mapping([j; i], map);
                     index = index + 1;
                 end
             % boundary of the map as obstacles
-            elseif ((i == 1 || i == size(map.grid, 1)) && (j >= 1 && j <= size(map.grid, 2))) ...
-                        || ((j == 1 || j == size(map.grid, 2)) && (i >= 1 && i < size(map.grid, 1)))
+            elseif ((i == 1 || i == size(map.cgrid, 1)) && (j >= 1 && j <= size(map.cgrid, 2))) ...
+                        || ((j == 1 || j == size(map.cgrid, 2)) && (i >= 1 && i < size(map.cgrid, 1)))
                     obstacle(:, index) = grid_inverse_mapping([j; i], map);
                     index = index + 1;
             end
@@ -462,69 +492,68 @@ function plotEnviroment(tree, qi, qf, dq)
 end
 
 
-% Numerical navigation function
-function [path, filledMap] = NNF(qs, qg, map)
+%% Numerical navigation function
+function [path, v, filledMap] = NNF(qs, qg, map)
 
-% generate the first map
-map.grid(map.grid ~= 0) = -1;
+% generate the modified map
+map.cgrid(map.cgrid ~= 0) = -1;
+Ts = 0.01;
 
-filledMap = breadth4explorer(map.grid, qg);
-figure
-imshow(filledMap, 'InitialMagnification', 'fit');
-colormap(gray); % Invert the grayscale colormap
-caxis([min(filledMap(:)), max(filledMap(:))]);
-title('Binary Map');
-hold on
+% Flooding algorithm to generate the filled map
+filledMap = breadth4explorer(map.cgrid, qg);
 
-% % plotting map
-% figure
-% imagesc(filledMap);
-% colormap(gray);
-% im.AlphaData = 0.5;
-% grid on;
-% axis image;
-% title('4 adjacent cell map')
+% Display the filled map
+figure;
+imshow(filledMap, [], 'InitialMagnification', 'fit');
+colormap([0 0 0; jet(256)]); % Set colormap with black for the first color
+caxis([-1, max(filledMap(:))]); % Ensure the range includes -1 for black
+colorbar;
+title('Binary Map with Path');
+hold on;
+
+max_vel_x = 1.25; % m/s
+max_vel_y = 1; % m/s
 
 % Path finding and cost 
-path1 = depthFirstHeuristic(filledMap, qs, qg);
-[hop1, cost1] = hopCounter(filledMap, path1)
+path = depthFirstHeuristic(filledMap, qs, qg);
+v = zeros(4,size(path,2));
+for i = 1:size(path,2)-1
+    v(1:2,i) = grid_inverse_mapping(path(:,i+1),map)/Ts-grid_inverse_mapping(path(:,i),map)/Ts;
+    v(1:2,i) = saturation(v(1:2,i), max_vel_x, max_vel_y);
+    if v(2,i) ~= 0
+        Ts = 0.3;
+    else
+        Ts = 0.1;
+    end
+        % Orientation of the force
+    v(3,i) = atan2(v(2,i),v(1,i));
+    v(4,i+1) = v(4,i) + Ts;
+end
+[hop, cost] = hopCounter(filledMap, path);
 
 % Plot the start and goal positions
-plot(qs(1), qs(2), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g'); % Start point
-plot(qg(1), qg(2), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r'); % Goal point
-
+plot(qs(1), qs(2), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g', 'DisplayName', 'Start'); % Start point
+plot(qg(1), qg(2), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r', 'DisplayName', 'Goal'); % Goal point
 
 % Plot the path
-pathX = path1(1,:);
-pathY = path1(2,:);
-plot(pathX, pathY, 'b-', 'LineWidth', 2); % Path
+pathX = path(1,:);
+pathY = path(2,:);
+plot(pathX, pathY, 'b-', 'LineWidth', 2, 'DisplayName', 'Path'); % Path
 
-scatter(path1(1,:), path1(2,:))
+% Plot the visited points
+scatter(path(1,:), path(2,:), 'm', 'filled', 'DisplayName', 'Visited Points');
 
-% % Plot the first path
-% figure
-% imagesc(map1);
-% colormap(gray);
-% im.AlphaData = 0.5;
-% grid on;
-% axis image;
-% hold on
-% % Plot starting and ending point
-% rectangle('Position', [qs(2)-0.5, qs(1)-0.5, 1, 1], ...
-%         'FaceColor', 'b', 'EdgeColor', 'none');
-% rectangle('Position', [qg(2)-0.5, qg(1)-0.5, 1, 1], ...
-%         'FaceColor', 'r', 'EdgeColor', 'none');
-% hold on
-% title('Path Finding Algorithm depthFirstHeuristic')
-% for i = 2:size(path1, 2)-1
-%     pause(0.2);
-%     rectangle('Position', [path1(1, i)-0.5, path1(2, i)-0.5, 1, 1], ...
-%         'FaceColor', 'y', 'EdgeColor', 'none');
-% end
-% hold off
-%scatter(path1(1,:), path1(2,:))
+% Add legend
+legend;
 
-path = path1;
+% Set axis properties
+axis on;
+grid on;
+xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
+ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
+title('Pathfinding from Start to Goal');
+
+hold off;
 
 end
 
@@ -598,8 +627,8 @@ function [path, stack, heuristic] = depthFirstHeuristic(map, qs, qg)
     %until we reach the goal
     while (x ~= qg(1) || y ~= qg(2)) && ~isempty(stack)
         % pop
-        x = stack(1,end)
-        y = stack(2,end)
+        x = stack(1,end);
+        y = stack(2,end);
         stack(:,end) = [];
         % marking the point as visited
         visited = [visited, [x; y]];

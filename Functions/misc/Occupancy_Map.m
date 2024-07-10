@@ -218,19 +218,40 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
     grid = rot90(z_heights) > 0;
     grid = double(grid);
 
+    % Inflate map for correct motion planning
+    inflate = q_start(3)/step;
+    obstaclePos = find(grid ~= 0);
+    [i, j] = ind2sub(size(grid), obstaclePos);
+    obstaclePos = [i'; j'];
+
+    configGrid = grid;
+    % Expand the obstacle 
+    for i = 1:size(obstaclePos,2)
+        for j = -floor(inflate/2):floor(inflate/2)
+            for k = -floor(inflate/2):floor(inflate/2)
+                if obstaclePos(1,i)+j >= 1 && obstaclePos(1,i)+j <= size(grid,1) && ...
+                        obstaclePos(2,i)+k >= 1 && obstaclePos(2,i)+k <= size(grid,2)
+                    configGrid(obstaclePos(1,i)+j,obstaclePos(2,i)+k) = 1;
+                end
+            end
+        end
+    end   
+
     % Define a map struct
-    map = struct('grid', grid, 'row', row, 'column', col, 'step', step,...
+    map = struct('grid', grid,'cgrid', configGrid, 'row', row, 'column', col, 'step', step,...
         'bias', bias);
 
     % Plot 3D map
     plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
+    
+    % Plot Config. space map
+    plotOccupancy(X, Y, rot90(configGrid,-1), type, q_start, q_goal)
 end
 
 function plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
     
     % Plotting the map
-    figure(1)
-    clf; % Clear the figure for a fresh plot
+    figure;
     surf(X, Y, z_heights', 'EdgeColor', 'none'); % Plot the surface without grid lines
     hold on;
 
@@ -265,7 +286,7 @@ function plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
     
     % Additional enhancements
     set(gca, 'FontSize', 12, 'FontWeight', 'bold'); % Set the font size and weight for the axes
-    hold off
+    hold off;
 
 end
 
