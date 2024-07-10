@@ -52,7 +52,7 @@ scatter(q_goal_grid(1), q_goal_grid(2), 100, 'm', 'filled', 'DisplayName', 'Goal
 
 switch type
     case 1
-        [path, f, U, q_o, f_x, f_y] = artificialPotential(q_start, q_goal, map, 1);
+        [path, f, U, q_o, f_x, f_y] = artificialPotential(q_start, q_goal, map, 2);
         varargout = {f, U, q_o, f_x, f_y};
     case 2
         path = rrt(q_start, q_goal, map);
@@ -132,31 +132,40 @@ f_x = zeros(size(X));
 f_y = zeros(size(Y));
 U = zeros(size(X));
 
-q_o_max = sense(q_next(:,i), map, 10000);
+% Assuming q_next and sense function are defined elsewhere and valid
+q_o_max = sense(q_next(:,i), map, 10000);  % Adjust as needed
+
 for i = 1:size(X, 1)
     for j = 1:size(X, 2)
-        [~, f, U_val] = artificialPotentialField(grid_inverse_mapping([X(i, j); Y(i, j)], map), q_goal, q_o_max, 1);
+        [~, f, U_val] = artificialPotentialField(grid_inverse_mapping([X(i, j); Y(i, j)], map), q_goal, q_o_max, 2);
         f_x(i, j) = f(1);
         f_y(i, j) = f(2);
         U(i, j) = U_val;
     end
 end
 
+% Flip the forces if necessary to match the grid orientation
 f_x = flip(f_x);
 f_y = flip(f_y);
 
+% Calculate the magnitude and normalize the vectors
 magnitude = sqrt(f_x.^2 + f_y.^2);
-magnitude = 1;
 f_x_norm = f_x ./ magnitude;
 f_y_norm = f_y ./ magnitude;
 
-% Plot the vector field using quiver with scaling set to 0 to show true vector lengths
+% Plot the vector field on the binary map
 figure;
-quiver(X, Y, f_x_norm, f_y_norm, 0);
-title('Normalized Vector Field');
+imshow(map.grid, 'InitialMagnification', 'fit');
+colormap(flipud(gray)); % Invert the grayscale colormap
+hold on;
+
+% Overlay the vector field using quiver with scaling set to 0 to show true vector lengths
+quiver(X, Y, f_x_norm, f_y_norm, 0, 'r'); % 'r' sets the vector color to red
+title('Normalized Vector Field on Grid Map');
 xlabel('X');
 ylabel('Y');
-axis equal; % Make sure the aspect ratio is equal to properly visualize vectors
+axis equal; % Ensure equal aspect ratio to properly visualize vectors
+hold off;
 
 % Plot the potential field using contour or surf
 U = flip(U);
