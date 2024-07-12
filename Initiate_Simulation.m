@@ -7,6 +7,7 @@ clear; close all; clc
 %% Pre-formulate functions
 % addpath(genpath('casadi-windows-matlabR2016a-v3.5.1'))
 addpath(genpath('\Users\v4pal\Desktop\UNIVERSITA\[02] - MASTER\II ANNO\II SEMESTRE\Field and Service Robotics\Project'));
+addpath(genpath('C:\Users\v4pal\Downloads\FSR_bipedal-main\FSR_bipedal-main'));
 
 import casadi.*
 % generate global symbolic functions:
@@ -126,7 +127,7 @@ elbow_max = -10;
 
 %% grid surface definition (if using uneven terrain)
 % make sure to switch to "Mesh Grid Surface" in Hector model
-row = 5; col = 1; type = 8;
+row = 1; col = 5; type = 9;
 
 % start and goal points
 q_start = [body_x0; body_y0; body_z0];
