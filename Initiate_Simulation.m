@@ -127,7 +127,7 @@ elbow_max = -10;
 
 %% grid surface definition (if using uneven terrain)
 % make sure to switch to "Mesh Grid Surface" in Hector model
-row = 1; col = 5; type = 9;
+row = 1; col = 5; type = 5;
 
 % start and goal points
 q_start = [body_x0; body_y0; body_z0];
