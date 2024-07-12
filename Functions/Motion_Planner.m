@@ -33,16 +33,16 @@ scatter(q_start_grid(1), q_start_grid(2), 100, 'g', 'filled', 'DisplayName', 'St
 scatter(q_goal_grid(1), q_goal_grid(2), 100, 'm', 'filled', 'DisplayName', 'Goal');
 
 % Plot the binary map with inverted colors
-figure;
-clf;
-imshow(map.cgrid, 'InitialMagnification', 'fit');
-colormap(flipud(gray)); % Invert the grayscale colormap
-title('Binary Configuration Space Map');
-xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
-hold on;
-axis equal;
-set(gca, 'YDir', 'reverse'); % Reverse Y-axis for proper grid display
+% figure;
+% clf;
+% imshow(map.cgrid, 'InitialMagnification', 'fit');
+% colormap(flipud(gray)); % Invert the grayscale colormap
+% title('Binary Configuration Space Map');
+% xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
+% ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
+% hold on;
+% axis equal;
+% set(gca, 'YDir', 'reverse'); % Reverse Y-axis for proper grid display
 
 % Mark the start and goal points
 q_start_grid = grid_mapping(q_start(1:2), map);
@@ -74,7 +74,7 @@ max_iterations = 200;
 q_o = [];
 
 % Iterate until near the goal or max_iteration 
-while norm(q_goal - q_next(:, i)) > 0.1 && i < max_iterations
+while norm(q_goal - q_next(:, i)) > 0.3 && i < max_iterations
     grid_mapping(q_next(:,i), map)
     q_o = sense(q_next(:,i), map, 10);
 
@@ -125,7 +125,7 @@ hold off;
 path = q_next;
 
 % Define the grid of points
-[X, Y] = meshgrid(1:size(map.grid, 2), 1:size(map.grid, 1));
+[X, Y] = meshgrid(map.bias:map.step:map.column, map.bias:map.step:map.row);
 
 % Initialize arrays for forces and potential
 f_x = zeros(size(X));
@@ -137,7 +137,7 @@ q_o_max = sense(q_next(:,i), map, 10000);  % Adjust as needed
 
 for i = 1:size(X, 1)
     for j = 1:size(X, 2)
-        [~, f, U_val] = artificialPotentialField(grid_inverse_mapping([X(i, j); Y(i, j)], map), q_goal, q_o_max, 2);
+        [~, f, U_val] = artificialPotentialField([X(i, j); Y(i, j)], q_goal, q_o_max, type);
         f_x(i, j) = f(1);
         f_y(i, j) = f(2);
         U(i, j) = U_val;
@@ -145,8 +145,8 @@ for i = 1:size(X, 1)
 end
 
 % Flip the forces if necessary to match the grid orientation
-f_x = flip(f_x);
-f_y = flip(f_y);
+% f_x = flip(f_x);
+% f_y = flip(f_y);
 
 % Calculate the magnitude and normalize the vectors
 magnitude = sqrt(f_x.^2 + f_y.^2);
@@ -159,18 +159,17 @@ imshow(map.grid, 'InitialMagnification', 'fit');
 colormap(flipud(gray)); % Invert the grayscale colormap
 hold on;
 
+[x, y] = meshgrid(1:size(map.grid,2), 1:size(map.grid,1));
 % Overlay the vector field using quiver with scaling set to 0 to show true vector lengths
-quiver(X, Y, f_x_norm, f_y_norm, 0, 'r'); % 'r' sets the vector color to red
+quiver(x, y, f_x_norm, f_y_norm, 0, 'r'); % 'r' sets the vector color to red
 title('Normalized Vector Field on Grid Map');
 xlabel('X');
 ylabel('Y');
 axis equal; % Ensure equal aspect ratio to properly visualize vectors
-hold off;
 
 % Plot the potential field using contour or surf
-U = flip(U);
 figure;
-contour(X, Y, U);
+contour(x, y, U);
 title('Potential Field');
 xlabel('X');
 ylabel('Y');
@@ -182,7 +181,7 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
 %ARTIFICIALPOTENTIAL Implements the artificial potential field method for trajectory planning.
 
     k_a = 10; % attrattive gain
-    k_r = 20;    % repulsive gain
+    k_r = 120;    % repulsive gain
     gamma = 2;  % repulsive factor
     Ts = 0.01; % samlpe time
 
@@ -210,7 +209,7 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
 
  
     f_r = [0; 0];
-    eta_o = 1;
+    eta_o = 0.5;
     if eta <= eta_o
         U_r = k_r/gamma * (1/eta - 1/eta_o)^gamma;
         if type == 1
@@ -229,17 +228,17 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
     
     % Max velocity saturation if flag is set
     % if flag == 1
-        if f_t(1) > max_vel_x
-            f_t(1) = max_vel_x;
-        elseif f_t(1) < 0
-            f_t(1) = 0;
-        end
-        
-        if f_t(2) > max_vel_y
-            f_t(2) = max_vel_y;
-        elseif f_t(2) < -max_vel_y
-            f_t(2) = -max_vel_y;
-        end
+        % if f_t(1) > max_vel_x
+        %     f_t(1) = max_vel_x;
+        % elseif f_t(1) < -max_vel_x
+        %     f_t(1) = -max_vel_x;
+        % end
+        % 
+        % if f_t(2) > max_vel_y
+        %     f_t(2) = max_vel_y;
+        % elseif f_t(2) < -max_vel_y
+        %     f_t(2) = -max_vel_y;
+        % end
     % end
 
 
@@ -327,17 +326,17 @@ for i = q_grid(2)-r_grid:q_grid(2)+r_grid
         % Check if the point is within the circle
         %if (i - q_grid(1))^2 + (j - q_grid(2))^2 <= r_grid^2
             % into the map
-            if i > 1 && i < size(map.cgrid, 1) && j > 1 && j < size(map.cgrid, 2)
-                if map.cgrid(i, j) ~= 0
+            if i > 1 && i < size(map.grid, 1) && j > 1 && j < size(map.grid, 2)
+                if map.grid(i, j) ~= 0
                     % Save each obstacle seen by the sensor
                     obstacle(:, index) = grid_inverse_mapping([j; i], map);
                     index = index + 1;
                 end
             % boundary of the map as obstacles
-            elseif ((i == 1 || i == size(map.cgrid, 1)) && (j >= 1 && j <= size(map.cgrid, 2))) ...
-                        || ((j == 1 || j == size(map.cgrid, 2)) && (i >= 1 && i < size(map.cgrid, 1)))
-                    obstacle(:, index) = grid_inverse_mapping([j; i], map);
-                    index = index + 1;
+            % elseif ((i == 1 || i == size(map.grid, 1)) && (j >= 1 && j <= size(map.grid, 2))) ...
+            %             || ((j == 1 || j == size(map.grid, 2)) && (i >= 1 && i < size(map.grid, 1)))
+            %         obstacle(:, index) = grid_inverse_mapping([j; i], map);
+            %         index = index + 1;
             end
         %end
     end
@@ -351,7 +350,7 @@ end
 function q_index = grid_mapping(q, map)
 %GRID_MAPPING Summary of this function goes here
 %   Detailed explanation goes here
-q_index = [round((q(1) + 1)/map.step + 1, 0); round((-q(2) + 1)/map.step + 1, 0)];
+q_index = [round((q(1) + 1)/map.step + 1); round((-q(2) + 1)/map.step + 1)];
 end
 
 function q_meter = grid_inverse_mapping(q, map)
