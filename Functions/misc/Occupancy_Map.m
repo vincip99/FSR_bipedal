@@ -9,8 +9,8 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
     % Define the grid
     step = 0.1;
     bias = -1;
-    x_grid = bias:step:row;
-    y_grid = bias:step:col;
+    x_grid = bias:step:col;
+    y_grid = bias:step:row;
 
     % Generate the mesh grid
     [X, Y] = meshgrid(x_grid, y_grid);
@@ -44,8 +44,8 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             h = 1;
             obstacle_length = floor(length(x_grid)/15);
             obstacle_width = floor(length(y_grid)/15);
-            obstacle_x = randi(length(x_grid) - obstacle_length);
-            obstacle_y = randi(length(y_grid) - obstacle_width);
+            obstacle_x = floor(randi(length(x_grid) - obstacle_length));
+            obstacle_y = floor(randi(length(y_grid) - obstacle_width));
             z_heights(obstacle_y:obstacle_y+obstacle_width,obstacle_x:obstacle_x+obstacle_length) = h;
             z_heights = z_heights';
         case 6
@@ -56,7 +56,7 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             n2 = 2; % Obstacles walls opposite side
             obstacle_length = floor(length(y_grid)/randi([2 4]));
             obstacle_width = floor(length(y_grid)/20);
-            obstacle_x = randi(length(x_grid) - obstacle_length, n1+n2, 1);
+            obstacle_x = floor(randi(length(x_grid) - obstacle_length, n1+n2, 1));
             % lateral Walls
             z_heights(1:1+obstacle_width,:) = h;
             z_heights(end-obstacle_width:end,:) = h;
@@ -240,12 +240,18 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
     % Define a map struct
     map = struct('grid', grid,'cgrid', configGrid, 'row', row, 'column', col, 'step', step,...
         'bias', bias);
+    
+    % Define a 3d map struct
+    map3 = struct('X', X, 'Y', Y, 'Z', z_heights, 'cZ', rot90(configGrid,-1));
 
     % Plot 3D map
     plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
     
     % Plot Config. space map
     plotOccupancy(X, Y, rot90(configGrid,-1), type, q_start, q_goal)
+
+    % Plot 3D mesh
+    plotMesh(X, Y, z_heights, type, q_start, q_goal)
 end
 
 function plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
@@ -257,13 +263,18 @@ function plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
 
     % Mark the start and goal points
     scatter3(q_start(1), q_start(2), q_start(3), 100, 'g', 'filled', 'DisplayName', 'Start');
-    scatter3(q_goal(1), q_goal(2), q_start(3), 100, 'm', 'filled', 'DisplayName', 'Goal');
+    text(q_start(1), q_start(2), q_start(3), '  Start', 'VerticalAlignment', 'bottom', 'FontSize', 12);
+    scatter3(q_goal(1), q_goal(2), q_goal(3), 100, 'm', 'filled', 'DisplayName', 'Goal');
+    text(q_goal(1), q_goal(2), q_goal(3), '  Goal', 'VerticalAlignment', 'bottom', 'FontSize', 12);
     
     % Enhance the plot
     title(sprintf('Generated Terrain Type %d', type), 'FontSize', 14, 'FontWeight', 'bold');
     xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
     ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
     zlabel('Height', 'FontSize', 12, 'FontWeight', 'bold');
+
+    % Add legends
+    legend('Terrain', 'Start Point', 'Goal Point', 'Location', 'BestOutside');
 
     % Define custom colormap
     custom_colormap = [0.3 0.3 0.3;  % Black (bottom)
@@ -279,15 +290,51 @@ function plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
     axis tight; % Remove extra whitespace
     axis equal; % Equal scaling for all axes
     
-    % Improve the lighting
-    camlight left; % Add lighting from the left
-    lighting phong; % Set lighting to phong for a more realistic look
-    material shiny; % Make the material shiny
+    % Adjust lighting and material properties
+    shading interp;
+    lighting gouraud;
+    material shiny;
+    lightangle(-45, 30);
     
     % Additional enhancements
     set(gca, 'FontSize', 12, 'FontWeight', 'bold'); % Set the font size and weight for the axes
     hold off;
 
+end
+
+function plotMesh(X, Y, z_heights, type, q_start, q_goal)
+% Plot the terrain map
+    figure;
+    hold on;
+    mesh(X, Y, z_heights', 'FaceAlpha', 0.7);
+
+    % Plot start and goal points
+    plot3(q_start(1), q_start(2), q_start(3), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
+    text(q_start(1), q_start(2), q_start(3), '  Start', 'VerticalAlignment', 'bottom', 'FontSize', 12);
+    plot3(q_goal(1), q_goal(2), q_goal(3), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
+    text(q_goal(1), q_goal(2), q_goal(3), '  Goal', 'VerticalAlignment', 'bottom', 'FontSize', 12);
+
+    % Customize the color map
+    colormap(jet);
+    colorbar;
+
+    % Adjust lighting and material properties
+    lighting gouraud;
+    material shiny;
+    lightangle(-45, 30);
+    % Set the initial view to isometric
+    view(3);
+    
+    % Improved labels and title
+    xlabel('X-axis (meters)');
+    ylabel('Y-axis (meters)');
+    zlabel('Height (meters)');
+    title(['Occupancy Map with Terrain Type ' num2str(type)]);
+
+    % Add legends
+    legend('Terrain', 'Start Point', 'Goal Point', 'Location', 'BestOutside');
+
+    hold off;
 end
 
 
