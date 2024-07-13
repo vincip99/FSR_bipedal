@@ -1,13 +1,13 @@
 function out = artificialPotential(u)
 %ARTIFICIALPOTENTIAL Implements the artificial potential field method for trajectory planning.
 
-    k_a = 50; % attrattive gain
-    k_r = 10;    % repulsive gain
+    k_a = 10; % attrattive gain
+    k_r = 40;    % repulsive gain
     gamma = 2;  % repulsive factor
     Ts = 0.01; % samlpe time
 
     max_vel_x = 1.25; % m/s
-    max_vel_y = 0.5; % m/s
+    max_vel_y = 0.6; % m/s
     min_vel = 0.5; % m/s
 
     % Input Variables
@@ -35,7 +35,7 @@ function out = artificialPotential(u)
     b = q_o(:,idx);
  
     %   Repulsive potential
-    eta_o = 1;
+    eta_o = 0.8;
     if eta <= eta_o
         U_r = k_r/gamma * (1/eta - 1/eta_o)^gamma;
         %   f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
@@ -79,7 +79,7 @@ function out = artificialPotential(u)
     end
 
     out(1:2) = f_t';
-    out(3) = yaw;
+    out(3) = 0; %yaw;
 
 end
 

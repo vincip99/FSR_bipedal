@@ -24,8 +24,21 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             % Flat terrain
             z_heights = (zeros(size(X)))';
         case 3
-            % a% Slope on X
-            z_heights = (0.3.*X)';
+            z_heights = zeros(size(X))';
+            % Define circular obstacle parameters
+            center_x = floor(length(x_grid) / 2);
+            center_y = floor(length(y_grid) / 4);
+            radius = min(floor(length(x_grid) / 10), floor(length(y_grid) / 10)); % radius of the circle
+            h = 1; % height of the obstacle
+            
+            % Create the circular obstacle
+            for i = 1:size(X, 1)
+                for j = 1:size(X, 2)
+                    if (X(i, j) - center_x)^2 + (Y(i, j) - center_y)^2 <= radius^2
+                        z_heights(i, j) = h;
+                    end
+                end
+            end
         case 4
             % step terrain
             z_heights = (zeros(size(X)));
@@ -100,15 +113,15 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             obstacle_width = floor(length(y_grid)/15);
             obstacle_x1 = (length(x_grid) - obstacle_length)/2;
             obstacle_y1 = (length(y_grid) - obstacle_width)/2;
-            obstacle_x2 = (length(x_grid) - obstacle_length)/10;
-            obstacle_y2 = (length(y_grid) - obstacle_width)/10;
-            obstacle_x3 = (length(x_grid) - obstacle_length)/1.1;
-            obstacle_y3 = (length(y_grid) - obstacle_width)/1.1;
-            obstacle_x4 = (length(x_grid) - obstacle_length)/6;
-            obstacle_y4 = (length(y_grid) - obstacle_width)/1.3;
+            obstacle_x2 = (length(x_grid) - obstacle_length)/3;
+            obstacle_y2 = (length(y_grid) - obstacle_width)/6;
+            obstacle_x3 = (length(x_grid) - obstacle_length)/1.3;
+            obstacle_y3 = (length(y_grid) - obstacle_width)/1.2;
+            obstacle_x4 = (length(x_grid) - obstacle_length)/4.5;
+            obstacle_y4 = (length(y_grid) - obstacle_width)/1.1;
             z_heights(obstacle_y1:obstacle_y1+obstacle_width,obstacle_x1:obstacle_x1+obstacle_length) = h;
             z_heights(obstacle_y2:obstacle_y2+obstacle_width,obstacle_x2:obstacle_x2+obstacle_length) = h;
-            z_heights(obstacle_y3:obstacle_y3+obstacle_width,obstacle_x3:obstacle_x3+obstacle_length) = h;
+            z_heights(obstacle_y3:obstacle_y3+obstacle_length,obstacle_x3:obstacle_x3+obstacle_width) = h;
             z_heights(obstacle_y4:obstacle_y4+obstacle_width,obstacle_x4:obstacle_x4+obstacle_length) = h;
             z_heights = z_heights';
         case 10
@@ -209,6 +222,41 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             
             % Transpose the grid for correct orientation
             z_heights = z_heights';
+        case 12
+            z_heights = zeros(size(X));
+            h = 1;
+            obstacle_length = floor(length(x_grid)/15);
+            obstacle_width = floor(length(y_grid)/15);
+            
+            obstacle_x1 = (length(x_grid) - obstacle_length)/2;
+            obstacle_y1 = (length(y_grid) - obstacle_width)/2;
+            obstacle_x2 = (length(x_grid) - obstacle_length)/3;
+            obstacle_y2 = (length(y_grid) - obstacle_width)/6;
+            obstacle_x3 = (length(x_grid) - obstacle_length)/1.3;
+            obstacle_y3 = (length(y_grid) - obstacle_width)/1.5;
+            obstacle_x4 = (length(x_grid) - obstacle_length)/4.5;
+            obstacle_y4 = (length(y_grid) - obstacle_width)/1.1;
+            
+            z_heights(obstacle_y1:obstacle_y1+obstacle_width, obstacle_x1:obstacle_x1+obstacle_length) = h;
+            z_heights(obstacle_y2:obstacle_y2+obstacle_width, obstacle_x2:obstacle_x2+obstacle_length) = h;
+            
+            % Create a circular obstacle for the third one
+            center_x3 = obstacle_x3 + obstacle_length / 2;
+            center_y3 = obstacle_y3 + obstacle_length / 2;
+            radius3 = obstacle_length / 2;
+            
+            for i = 1:size(z_heights, 1)
+                for j = 1:size(z_heights, 2)
+                    if (i - center_y3)^2 + (j - center_x3)^2 <= radius3^2
+                        z_heights(i, j) = h;
+                    end
+                end
+            end
+            
+            z_heights(obstacle_y4:obstacle_y4+obstacle_width, obstacle_x4:obstacle_x4+obstacle_length) = h;
+            
+            z_heights = z_heights';
+
         otherwise
             error('Invalid terrain type. Choose 1 to 10 map type.');
     end

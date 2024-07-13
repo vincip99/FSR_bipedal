@@ -33,16 +33,16 @@ scatter(q_start_grid(1), q_start_grid(2), 100, 'g', 'filled', 'DisplayName', 'St
 scatter(q_goal_grid(1), q_goal_grid(2), 100, 'm', 'filled', 'DisplayName', 'Goal');
 
 % Plot the binary map with inverted colors
-% figure;
-% clf;
-% imshow(map.cgrid, 'InitialMagnification', 'fit');
-% colormap(flipud(gray)); % Invert the grayscale colormap
-% title('Binary Configuration Space Map');
-% xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
-% ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
-% hold on;
-% axis equal;
-% set(gca, 'YDir', 'reverse'); % Reverse Y-axis for proper grid display
+figure;
+clf;
+imshow(map.cgrid, 'InitialMagnification', 'fit');
+colormap(flipud(gray)); % Invert the grayscale colormap
+title('Binary Configuration Space Map');
+xlabel('X-axis', 'FontSize', 12, 'FontWeight', 'bold');
+ylabel('Y-axis', 'FontSize', 12, 'FontWeight', 'bold');
+hold on;
+axis equal;
+set(gca, 'YDir', 'reverse'); % Reverse Y-axis for proper grid display
 
 % Mark the start and goal points
 q_start_grid = grid_mapping(q_start(1:2), map);
@@ -70,13 +70,13 @@ i = 1;
 q_next(:, 1) = q_start;
 U_t(:, 1) = 0;
 f_t(:, 1) = [0; 0];
-max_iterations = 200;
+max_iterations = 300;
 q_o = [];
 
 % Iterate until near the goal or max_iteration 
 while norm(q_goal - q_next(:, i)) > 0.3 && i < max_iterations
     grid_mapping(q_next(:,i), map)
-    q_o = sense(q_next(:,i), map, 10);
+    q_o = sense(q_next(:,i), map, 25);
 
     % Grid value of actual q and q_o
     q_o_grid = [];
@@ -180,8 +180,8 @@ end
 function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
 %ARTIFICIALPOTENTIAL Implements the artificial potential field method for trajectory planning.
 
-    k_a = 10; % attrattive gain
-    k_r = 120;    % repulsive gain
+    k_a = 2; % attrattive gain
+    k_r = 20;    % repulsive gain
     gamma = 2;  % repulsive factor
     Ts = 0.01; % samlpe time
 
@@ -206,7 +206,6 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
     end
     [eta, idx] = min(dist); % minimum distance from the obstacles points
     b = q_o(:,idx);
-
  
     f_r = [0; 0];
     eta_o = 0.5;
@@ -244,16 +243,14 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
 
     % local minima
     % if U_t > 0 && norm(f_t) < 0.5 
+    %     if type == 1
     %     % Perform random motion to escape local minima
-    %     q_next = random_motion(q, q_o);
-    %     % f_r(1,1) = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(2) - b(2))/eta;
-    %     % f_r(2,1) = -k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(1) - b(1))/eta;
-    %     % f_t = f_a + f_r;
-    %     % q_next = q + Ts * f_t;
+    %         q_next = random_motion(q, q_o);
+    %     end
     % else
         % Update current position
         q_next = q + Ts * f_t; 
-    %end
+    % end
 
 end
 
@@ -273,33 +270,6 @@ function v = saturation(v, max_vel_x, max_vel_y)
     end
 end
 
-function q_next = random_motion(q, q_o)
-    % Possible movement directions: left, right, up, down, diagonals
-    directions = [1, 0; -1, 0; 0, 1; 0, -1; 1, 1; -1, -1; 1, -1; -1, 1];
-    
-    amplifier=0.03;
-
-    while ~is_free_space(q, q_o)
-        % random direction for the movement
-        random_dir = directions(randi(size(directions, 1)), :);
-        
-        % Calculate the next position
-        q_next = q +amplifier*random_dir';%trasponse to make it a column vector
-
-    end
-    
-end
-
-function is_free = is_free_space(position, q_o)
-    % Check if the position is free from obstacles
-    is_free = true;
-    for i = 1:size(q_o, 2)
-        if norm(position - q_o(:, i)) == 0
-            is_free = false;
-            break;
-        end
-    end
-end
 
 function obstacle = sense(q, map, r_grid)
 
@@ -326,8 +296,8 @@ for i = q_grid(2)-r_grid:q_grid(2)+r_grid
         % Check if the point is within the circle
         %if (i - q_grid(1))^2 + (j - q_grid(2))^2 <= r_grid^2
             % into the map
-            if i > 1 && i < size(map.grid, 1) && j > 1 && j < size(map.grid, 2)
-                if map.grid(i, j) ~= 0
+            if i > 1 && i < size(map.cgrid, 1) && j > 1 && j < size(map.cgrid, 2)
+                if map.cgrid(i, j) ~= 0
                     % Save each obstacle seen by the sensor
                     obstacle(:, index) = grid_inverse_mapping([j; i], map);
                     index = index + 1;
