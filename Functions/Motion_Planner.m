@@ -194,6 +194,7 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
     if norm(e) < 1  % closer to the goal
         U_a = 1/2 * k_a * norm(e)^2; 
         f_a = k_a * e;
+        Ts = Ts/10; % Reducin integration time if near the goal
     elseif norm(e) >= 1 % bounded force when far from the goal
         U_a = k_a * norm(e);
         f_a = k_a * e/norm(e);
@@ -207,10 +208,10 @@ function [q_next, f_t, U_t] = artificialPotentialField(q, q_goal, q_o, type)
     [eta, idx] = min(dist); % minimum distance from the obstacles points
     b = q_o(:,idx);
  
-    f_r = [0; 0];
     eta_o = 0.5;
     if eta <= eta_o
         U_r = k_r/gamma * (1/eta - 1/eta_o)^gamma;
+        Ts = Ts/10; % Reducin integration time if near the obstacle
         if type == 1
             f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
         elseif type == 2

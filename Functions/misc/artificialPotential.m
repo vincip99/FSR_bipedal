@@ -1,13 +1,13 @@
 function out = artificialPotential(u)
 %ARTIFICIALPOTENTIAL Implements the artificial potential field method for trajectory planning.
 
-    k_a = 10; % attrattive gain
+    k_a = 2.25; % attrattive gain
     k_r = 40;    % repulsive gain
     gamma = 2;  % repulsive factor
     Ts = 0.01; % samlpe time
 
     max_vel_x = 1.25; % m/s
-    max_vel_y = 0.6; % m/s
+    max_vel_y = 1; % m/s
     min_vel = 0.5; % m/s
 
     % Input Variables
@@ -21,6 +21,7 @@ function out = artificialPotential(u)
     if norm(e) < 1  % closer to the goal
         U_a = 1/2 * k_a * norm(e)^2; 
         f_a = k_a * e;
+        Ts = Ts/10; % Reducin integration time if near the goal
     elseif norm(e) >= 1 % bounded force when far from the goal
         U_a = k_a * norm(e);
         f_a = k_a * e/norm(e);
@@ -41,6 +42,7 @@ function out = artificialPotential(u)
         %   f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
         f_r(1,1) = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(2) - b(2))/eta;
         f_r(2,1) = -k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(1) - b(1))/eta;
+        Ts = Ts/10; % Reducin integration time if near the obstacle
     elseif eta > eta_o 
         U_r = 0;
         f_r = [0; 0];

@@ -7,7 +7,7 @@ map = reshape(u(3:end), 21, 61);
 q_grid = grid_mapping(q);
 
 % Sensing distance action
-r_grid = 10;
+r_grid = 8;
 
 % Initializing an obstacle far away for the algorithm
 inf_obstacle = 100000;
