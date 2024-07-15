@@ -52,7 +52,7 @@ scatter(q_goal_grid(1), q_goal_grid(2), 100, 'm', 'filled', 'DisplayName', 'Goal
 
 switch type
     case 1
-        [path, f, U, q_o, f_x, f_y] = artificialPotential(q_start, q_goal, map, 2);
+        [path, f, U, q_o, f_x, f_y] = artificialPotential(q_start, q_goal, map, 1);
         varargout = {f, U, q_o, f_x, f_y};
     case 2
         path = rrt(q_start, q_goal, map);
@@ -298,7 +298,7 @@ for i = q_grid(2)-r_grid:q_grid(2)+r_grid
         %if (i - q_grid(1))^2 + (j - q_grid(2))^2 <= r_grid^2
             % into the map
             if i > 1 && i < size(map.cgrid, 1) && j > 1 && j < size(map.cgrid, 2)
-                if map.cgrid(i, j) ~= 0
+                if map.grid(i, j) ~= 0
                     % Save each obstacle seen by the sensor
                     obstacle(:, index) = grid_inverse_mapping([j; i], map);
                     index = index + 1;
@@ -476,7 +476,7 @@ function [path, v, filledMap] = NNF(qs, qg, map)
 
 % generate the modified map
 map.cgrid(map.cgrid ~= 0) = -1;
-Ts = 0.01;
+Ts = 0.1;
 
 % Flooding algorithm to generate the filled map
 filledMap = breadth4explorer(map.cgrid, qg);
@@ -496,17 +496,19 @@ max_vel_y = 1; % m/s
 % Path finding and cost 
 path = depthFirstHeuristic(filledMap, qs, qg);
 v = zeros(4,size(path,2));
-for i = 1:size(path,2)-1
-    v(1:2,i) = grid_inverse_mapping(path(:,i+1),map)/Ts-grid_inverse_mapping(path(:,i),map)/Ts;
+for i = 2:size(path,2)-1
+    Ts = 0.1;
+    v(1:2,i) = grid_inverse_mapping(path(:,i),map)/Ts-grid_inverse_mapping(path(:,i-1),map)/Ts;
     v(1:2,i) = saturation(v(1:2,i), max_vel_x, max_vel_y);
-    if v(2,i) ~= 0
-        Ts = 0.3;
+    if path(2,i) ~= path(2,i-1)
+        Ts = 0.4;
+        v(1,i) = v(1,i)*0.8;
     else
-        Ts = 0.1;
+        Ts = 0.11;
     end
         % Orientation of the force
-    v(3,i) = atan2(v(2,i),v(1,i));
-    v(4,i+1) = v(4,i) + Ts;
+    v(3,i) = 0; % atan2(v(2,i),v(1,i));
+    v(4,i) = v(4,i-1) + Ts;
 end
 [hop, cost] = hopCounter(filledMap, path);
 

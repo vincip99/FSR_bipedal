@@ -111,7 +111,7 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             h = 1;
             obstacle_length = floor(length(x_grid)/15);
             obstacle_width = floor(length(y_grid)/15);
-            obstacle_x1 = (length(x_grid) - obstacle_length)/2;
+            obstacle_x1 = (length(x_grid) - obstacle_length)/1.9;
             obstacle_y1 = (length(y_grid) - obstacle_width)/2;
             obstacle_x2 = (length(x_grid) - obstacle_length)/3;
             obstacle_y2 = (length(y_grid) - obstacle_width)/6;
@@ -119,10 +119,13 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             obstacle_y3 = (length(y_grid) - obstacle_width)/1.2;
             obstacle_x4 = (length(x_grid) - obstacle_length)/4.5;
             obstacle_y4 = (length(y_grid) - obstacle_width)/1.1;
+            obstacle_x5 = (length(x_grid) - obstacle_length)/1.3;
+            obstacle_y5 = (length(y_grid) - obstacle_width)/6;
             z_heights(obstacle_y1:obstacle_y1+obstacle_width,obstacle_x1:obstacle_x1+obstacle_length) = h;
             z_heights(obstacle_y2:obstacle_y2+obstacle_width,obstacle_x2:obstacle_x2+obstacle_length) = h;
-            z_heights(obstacle_y3:obstacle_y3+obstacle_length,obstacle_x3:obstacle_x3+obstacle_width) = h;
+            z_heights(obstacle_y3:obstacle_y3+obstacle_width,obstacle_x3:obstacle_x3+obstacle_length) = h;
             z_heights(obstacle_y4:obstacle_y4+obstacle_width,obstacle_x4:obstacle_x4+obstacle_length) = h;
+            z_heights(obstacle_y5:obstacle_y5+obstacle_width,obstacle_x5:obstacle_x5+obstacle_length) = h;
             z_heights = z_heights';
         case 10
             z_heights = (zeros(size(X)));
@@ -142,32 +145,40 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             obstacle_width = floor(length(y_grid)/5);
             
             % Define interior walls 
-            interior_wall_1_x = floor(length(x_grid)/3):floor(length(x_grid)/3 + length(x_grid)/12);
-            interior_wall_1_y = floor(length(y_grid)/2):floor(length(y_grid)/2) + wall_thickness - 1;
+            interior_wall_1_x = floor(length(x_grid)/3):floor(length(x_grid)/3 + length(x_grid)/10);
+            interior_wall_1_y = floor(length(y_grid)/1.5):floor(length(y_grid)/1.5) + wall_thickness - 1;
 
             interior_wall_2_x = floor(length(x_grid)/3):floor(length(x_grid)/3) + wall_thickness - 1;
-            interior_wall_2_y = floor(length(y_grid)/2):floor(length(y_grid));
+            interior_wall_2_y = floor(length(y_grid)/1.5):floor(length(y_grid));
 
             interior_wall_3_x = floor(length(x_grid)/3):floor(length(x_grid)/3) + wall_thickness - 1;
             interior_wall_3_y = 1:floor(length(y_grid)/4);
     
-            interior_wall_4_x = floor(length(x_grid)/1.5):floor(length(x_grid)/1.5) + wall_thickness - 1;
-            interior_wall_4_y = 1:floor(length(y_grid)/2);
+            interior_wall_4_x = floor(length(x_grid)/1.15):floor(length(x_grid)/1.15) + wall_thickness - 1;
+            interior_wall_4_y = 1:floor(length(y_grid)/2.45);
+
+            interior_wall_5_x = floor(length(x_grid)/1.4):floor(length(x_grid)/1.4) + wall_thickness - 1;
+            interior_wall_5_y = floor(length(y_grid)/1.5):floor(length(y_grid));
 
             % Put an obstacle
-            obstacle_x1 = floor(length(x_grid)/1.35):floor(length(x_grid)/1.35) + obstacle_length - 1;
-            obstacle_y1 = floor(length(y_grid)/4):floor(length(y_grid)/4) + obstacle_width - 1;
+            obstacle_x1 = floor(length(x_grid)/1.7):floor(length(x_grid)/1.7) + obstacle_length - 1;
+            obstacle_y1 = floor(length(y_grid)/1.9):floor(length(y_grid)/1.9) + obstacle_width - 1;
 
-            obstacle_x2 = floor(length(x_grid)/1.25):floor(length(x_grid)/1.25) + obstacle_length - 1;
-            obstacle_y2 = floor(3*length(y_grid)/4.2):floor(3*length(y_grid)/4.2) + obstacle_width - 1;
+            obstacle_x2 = floor(length(x_grid)/2.4):floor(length(x_grid)/2.4) + obstacle_length - 1;
+            obstacle_y2 = floor(length(y_grid)/6):floor(length(y_grid)/6) + obstacle_width - 1;
+
+            obstacle_x3 = floor(length(x_grid)/1.2):floor(length(x_grid)/1.2) + obstacle_length - 1;
+            obstacle_y3 = floor(length(y_grid)/1.3):floor(length(y_grid)/1.3) + obstacle_width - 1;
 
             % Add interior walls to the grid
             z_heights(interior_wall_1_y, interior_wall_1_x) = h;
             z_heights(interior_wall_2_y, interior_wall_2_x) = h;
             z_heights(interior_wall_3_y, interior_wall_3_x) = h;
             z_heights(interior_wall_4_y, interior_wall_4_x) = h;
+            z_heights(interior_wall_5_y, interior_wall_5_x) = h;
             z_heights(obstacle_y1, obstacle_x1) = h/2;
             z_heights(obstacle_y2, obstacle_x2) = h/3;
+            z_heights(obstacle_y3, obstacle_x3) = h/3;
             
             % Transpose the grid for correct orientation
             z_heights = z_heights';
@@ -228,17 +239,33 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
             obstacle_length = floor(length(x_grid)/15);
             obstacle_width = floor(length(y_grid)/15);
             
-            obstacle_x1 = (length(x_grid) - obstacle_length)/2;
-            obstacle_y1 = (length(y_grid) - obstacle_width)/2;
-            obstacle_x2 = (length(x_grid) - obstacle_length)/3;
-            obstacle_y2 = (length(y_grid) - obstacle_width)/6;
-            obstacle_x3 = (length(x_grid) - obstacle_length)/1.3;
-            obstacle_y3 = (length(y_grid) - obstacle_width)/1.5;
-            obstacle_x4 = (length(x_grid) - obstacle_length)/4.5;
-            obstacle_y4 = (length(y_grid) - obstacle_width)/1.1;
+            obstacle_x1 = (length(x_grid) - obstacle_length)/1.6;
+            obstacle_y1 = (length(y_grid) - obstacle_width)/1.2;
+            obstacle_x2 = (length(x_grid) - obstacle_length)/9;
+            obstacle_y2 = (length(y_grid) - obstacle_width)/1;
+            obstacle_x3 = (length(x_grid) - obstacle_length)/2.8;
+            obstacle_y3 = (length(y_grid) - obstacle_width)/3;
+            obstacle_x4 = (length(x_grid) - obstacle_length)/1.1;
+            obstacle_y4 = (length(y_grid) - obstacle_width)/1.2;
+            obstacle_x5 = (length(x_grid) - obstacle_length)/1.5;
+            obstacle_y5 = (length(y_grid) - obstacle_width)/5;
             
-            z_heights(obstacle_y1:obstacle_y1+obstacle_width, obstacle_x1:obstacle_x1+obstacle_length) = h;
+            z_heights(obstacle_y1:obstacle_y1+obstacle_length, obstacle_x1:obstacle_x1+obstacle_length) = h;
             z_heights(obstacle_y2:obstacle_y2+obstacle_width, obstacle_x2:obstacle_x2+obstacle_length) = h;
+            z_heights(obstacle_y5:obstacle_y5+obstacle_length/1.5, obstacle_x5:obstacle_x5+obstacle_length*1.5) = h;
+
+            % Create a circular obstacle for the fourth one
+            center_x4 = obstacle_x4 + obstacle_length / 2;
+            center_y4 = obstacle_y4 + obstacle_length / 2;
+            radius4 = obstacle_length / 1.5;
+            
+            for i = 1:size(z_heights, 1)
+                for j = 1:size(z_heights, 2)
+                    if (i - center_y4)^2 + (j - center_x4)^2 <= radius4^2
+                        z_heights(i, j) = h;
+                    end
+                end
+            end
             
             % Create a circular obstacle for the third one
             center_x3 = obstacle_x3 + obstacle_length / 2;
@@ -251,9 +278,7 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
                         z_heights(i, j) = h;
                     end
                 end
-            end
-            
-            z_heights(obstacle_y4:obstacle_y4+obstacle_width, obstacle_x4:obstacle_x4+obstacle_length) = h;
+            end         
             
             z_heights = z_heights';
 
@@ -285,27 +310,50 @@ function [x_grid, y_grid, z_heights, map] = Occupancy_Map(row, col, type, q_star
         end
     end   
 
+    % Define the fraction of 1's to keep
+    fractionToKeep = 0.6; % Adjust this value as needed (e.g., 0.5 to keep 50% of the ones)
+    
+    % Find the positions of the 1's
+    [oneRows, oneCols] = find(grid == 1);
+    numOnes = length(oneRows);
+    
+    % Determine the number of 1's to keep
+    numToKeep = round(numOnes * fractionToKeep);
+    
+    % Randomly select indices to keep
+    indicesToKeep = randperm(numOnes, numToKeep);
+    
+    % Create a new grid with fewer 1's
+    newGrid = zeros(size(grid));
+    for i = 1:numToKeep
+        newGrid(oneRows(indicesToKeep(i)), oneCols(indicesToKeep(i))) = 1;
+    end
+
+    lGrid = newGrid;
+
     % Define a map struct
-    map = struct('grid', grid,'cgrid', configGrid, 'row', row, 'column', col, 'step', step,...
+    map = struct('grid', grid,'cgrid', configGrid, 'lgrid', lGrid, 'row', row, 'column', col, 'step', step,...
         'bias', bias);
     
     % Define a 3d map struct
     map3 = struct('X', X, 'Y', Y, 'Z', z_heights, 'cZ', rot90(configGrid,-1));
 
     % Plot 3D map
+    figure(1)
     plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
     
     % Plot Config. space map
+    figure(2)
     plotOccupancy(X, Y, rot90(configGrid,-1), type, q_start, q_goal)
 
     % Plot 3D mesh
-    plotMesh(X, Y, z_heights, type, q_start, q_goal)
+    % figure(3)
+    % plotMesh(X, Y, z_heights, type, q_start, q_goal)
 end
 
 function plotOccupancy(X, Y, z_heights, type, q_start, q_goal)
     
     % Plotting the map
-    figure;
     surf(X, Y, z_heights', 'EdgeColor', 'none'); % Plot the surface without grid lines
     hold on;
 
@@ -352,7 +400,6 @@ end
 
 function plotMesh(X, Y, z_heights, type, q_start, q_goal)
 % Plot the terrain map
-    figure;
     hold on;
     mesh(X, Y, z_heights', 'FaceAlpha', 0.7);
 

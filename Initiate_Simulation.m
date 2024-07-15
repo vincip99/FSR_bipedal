@@ -127,7 +127,7 @@ elbow_max = -10;
 
 %% grid surface definition (if using uneven terrain)
 % make sure to switch to "Mesh Grid Surface" in Hector model
-row = 1; col = 5; type = 8;
+row = 1; col = 5; type = 9;
 
 % start and goal points
 q_start = [body_x0; body_y0; body_z0];
@@ -139,7 +139,7 @@ q_goal = [4; 0; body_z0];
 %% Binary MAP
 
 %[path, f, U, q_o, X,Y,f_x,f_y] = Motion_Planner(q_start(1:2), q_goal(1:2), map, 3);
-[path, vel, filledMap] = Motion_Planner(q_start(1:2), q_goal(1:2), map, 1);
+[path, vel, filledMap] = Motion_Planner(q_start(1:2), q_goal(1:2), map, 3);
 
 % Create a time vector, ensuring it is a column vector (100x1 in this case)
 time_vector = linspace(1, 5, size(vel, 2))';

@@ -1,18 +1,20 @@
 function out = artificialPotential(u)
 %ARTIFICIALPOTENTIAL Implements the artificial potential field method for trajectory planning.
 
-    k_a = 2.25; % attrattive gain
-    k_r = 40;    % repulsive gain
+    k_a = 1.5; % attrattive gain
+    k_r = 400;    % repulsive gain
     gamma = 2;  % repulsive factor
     Ts = 0.01; % samlpe time
 
-    max_vel_x = 1.25; % m/s
+    max_vel_x = 1; % m/s
     max_vel_y = 1; % m/s
-    min_vel = 0.5; % m/s
+    min_vel = 0.2; % m/s
+    max_yaw = pi/4; 
 
     % Input Variables
     q = reshape(u(1:2), 2, 1);
     q_goal = reshape(u(3:4), 2, 1);
+    
     q_o = reshape(u(5:end), 2, []); % reshape to ensure it's a 2xN matrix
     
     e = q_goal - q;    % error as difference between goal and actual config.
@@ -21,7 +23,6 @@ function out = artificialPotential(u)
     if norm(e) < 1  % closer to the goal
         U_a = 1/2 * k_a * norm(e)^2; 
         f_a = k_a * e;
-        Ts = Ts/10; % Reducin integration time if near the goal
     elseif norm(e) >= 1 % bounded force when far from the goal
         U_a = k_a * norm(e);
         f_a = k_a * e/norm(e);
@@ -34,15 +35,39 @@ function out = artificialPotential(u)
     end
     [eta, idx] = min(dist); % minimum distance from the obstacles points
     b = q_o(:,idx);
+
+    % Condition to select points where both coordinates are less than 100
+    condition = (q_o(1, :) < 100) & (q_o(2, :) < 100);
+
+    % Select only the points satisfying the condition
+    q_obs = q_o(:, condition);
+
+    % f_r = [0; 0];
+    % U_r = 0;
+    % for i = 1:size(q_obs,2)
+    %     eta = norm(q - q_obs(:,i));
+    %     eta_o = 0.7;
+    %     if eta <= eta_o
+    %         U_r = U_r + k_r/gamma * (1/eta - 1/eta_o)^gamma;
+    %         f_r = f_r + k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - q_obs(:,i))/eta;
+    %         f_r(1,1) = f_r(1,1) + k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(2) - q_obs(2,i))/eta;
+    %         f_r(2,1) = f_r(2,1) -k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(1) - q_obs(1,i))/eta;
+    %         Ts = Ts/10; % Reducin integration time if near the obstacle
+    %     elseif eta > eta_o 
+    %         U_r = U_r + 0;
+    %         f_r = f_r + [0; 0];
+    %     end
+    % end
+    
  
+    yaw = 0;
     %   Repulsive potential
-    eta_o = 0.8;
+    eta_o = 1.6;
     if eta <= eta_o
         U_r = k_r/gamma * (1/eta - 1/eta_o)^gamma;
-        %   f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
+        % f_r = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q - b)/eta;
         f_r(1,1) = k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(2) - b(2))/eta;
         f_r(2,1) = -k_r/eta^2 * (1/eta - 1/eta_o)^(gamma-1)*(q(1) - b(1))/eta;
-        Ts = Ts/10; % Reducin integration time if near the obstacle
     elseif eta > eta_o 
         U_r = 0;
         f_r = [0; 0];
@@ -50,9 +75,6 @@ function out = artificialPotential(u)
 
     U_t = U_a + U_r;
     f_t = f_a + f_r;
-
-    % Orientation of the force
-    yaw = atan2(f_t(2),f_t(1));
     
     % max velocity saturation
     if f_t(1) > max_vel_x
@@ -71,46 +93,18 @@ function out = artificialPotential(u)
         f_t(1) = min_vel;
     end
 
-    % local minima
-    if U_t > 0 && norm(f_t) == 0 
-        % Perform random motion to escape local minima
-        q_next = random_motion(q, q_o, 10);
-    else
-        % Update current position
-        q_next = q + Ts * f_t;
+    % Orientation of the force
+    % yaw = atan2(f_t(2),f_t(1));
+
+    if yaw > max_yaw
+        yaw = max_yaw;
+    elseif yaw < -max_yaw
+        yaw = -max_yaw;
     end
 
     out(1:2) = f_t';
-    out(3) = 0; %yaw;
+    out(3) = yaw; % yaw;
 
-end
-
-function q_next = random_motion(q, q_o)
-    % Possible movement directions: left, right, up, down, diagonals
-    directions = [1, 0; -1, 0; 0, 1; 0, -1; 1, 1; -1, -1; 1, -1; -1, 1];
-    
-    amplifier=3;
-
-    while ~is_free_space(q_next, q_o)
-        % random direction for the movement
-        random_dir = directions(randi(size(directions, 1)), :);
-        
-        % Calculate the next position
-        q_next = q +amplifier*random_dir';%trasponse to make it a column vector
-
-    end
-    
-end
-
-function is_free = is_free_space(position, q_o)
-    % Check if the position is free from obstacles
-    is_free = true;
-    for i = 1:size(q_o, 2)
-        if norm(position - q_o(:, i)) == 0
-            is_free = false;
-            break;
-        end
-    end
 end
 
 
